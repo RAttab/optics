@@ -16,8 +16,8 @@ struct optics_packed lens
     size_t lens_len;
     size_t name_len;
 
-    atomic_bool_t dead;
     optics_off_t next;
+    atomic_uint_fast8_t dead;
 };
 
 
@@ -25,9 +25,10 @@ struct optics_packed lens
 // utils
 // -----------------------------------------------------------------------------
 
-static const char * lens_name_ptr(struct lens *lens)
+static char * lens_name_ptr(struct lens *lens)
 {
-    return ((uint8_t *) lens) + sizeof(struct lens) + lens->lens_len;
+    size_t off = sizeof(struct lens) + lens->lens_len;
+    return (char *) (((uint8_t *) lens) + off);
 }
 
 static struct lens *
@@ -37,10 +38,10 @@ lens_alloc(
         size_t lens_len,
         const char *name)
 {
-    size_t name_len = strnlen(optics_name_max_len, name) + 1;
+    size_t name_len = strnlen(name, optics_name_max_len) + 1;
     if (name_len == optics_name_max_len) return 0;
 
-    size_t total_len = sizeof(struct lens) + name_len, + lens_len;
+    size_t total_len = sizeof(struct lens) + name_len + lens_len;
 
     optics_off_t off = region_alloc(region, total_len);
     if (!off) return NULL;
@@ -62,14 +63,14 @@ static struct lens *lens_ptr(struct region *region, optics_off_t off)
     struct lens *lens = region_ptr(region, off, sizeof(struct lens));
     if (!lens) return NULL;
 
-    size_t total_len = sizeof(struct lens) + lens->name_len, + lens->lens_len;
-    return region_ptr(region, off, total_lens);
+    size_t total_len = sizeof(struct lens) + lens->name_len + lens->lens_len;
+    return region_ptr(region, off, total_len);
 }
 
 static void * lens_sub_ptr(struct lens *lens, enum lens_type type)
 {
     if (lens->type != type) {
-        optics_fail("invalid lens type: %d != %d", lens->type, lens_counter);
+        optics_fail("invalid lens type: %d != %d", lens->type, type);
         return NULL;
     }
 
@@ -88,7 +89,7 @@ static optics_off_t lens_off(struct lens *lens)
 
 static enum lens_type lens_type(struct lens *lens)
 {
-    return l->lens->type;
+    return lens->type;
 }
 
 static const char * lens_name(struct lens *lens)

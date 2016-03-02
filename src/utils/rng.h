@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 // -----------------------------------------------------------------------------
 // rng
 // -----------------------------------------------------------------------------
@@ -15,6 +17,6 @@ struct rng
 };
 
 struct rng *rng_global();
-void rng_init(struct rng *rng, uint32_t seed);
+void rng_init(struct rng *rng);
 uint32_t rng_gen(struct rng *rng);
 uint32_t rng_gen_range(struct rng *rng, uint32_t min, uint32_t max);

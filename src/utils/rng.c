@@ -5,22 +5,24 @@
 
 #include "rng.h"
 
-static uint64_t rdtsc()
+static void rdtsc(uint64_t *t, uint64_t *u)
 {
 #ifdef __amd64
-    __asm__ __volatile__ ("rdtsc" : "=a" (t), "=d" (u));
+    __asm__ __volatile__ ("rdtsc" : "=a" (*t), "=d" (*u));
 #else
 #error "Read your platform's perf counter here"
 #endif
 }
 
-struct rng *rng_global() {
+struct rng *rng_global()
+{
     static __thread struct rng rng;
     return &rng;
 }
 
-void rng_init(struct rng *rng, uint32_t seed) {
-    *rng = {
+void rng_init(struct rng *rng)
+{
+    *rng = (struct rng) {
         .x = 123456789,
         .y = 362436069,
         .z = 521288629,
@@ -28,14 +30,16 @@ void rng_init(struct rng *rng, uint32_t seed) {
     };
 
     uint64_t t, u;
+    rdtsc(&t, &u);
+
     rng->x ^= t >> 32;
     rng->y ^= t;
     rng->z ^= u >> 32;
     rng->w ^= u;
 }
 
-uint32_t rng_gen(rng *rng) {
-
+uint32_t rng_gen(struct rng *rng)
+{
     uint32_t t = rng->x ^ (rng->x << 11);
     rng->x = rng->y;
     rng->y = rng->z;
@@ -43,6 +47,7 @@ uint32_t rng_gen(rng *rng) {
     return rng->w = rng->w ^ (rng->w >> 19) ^ (t ^ (t >> 8));
 }
 
-uint32_t rng_gen_range(rng *rng, uint32_t min, uint32_t max) {
+uint32_t rng_gen_range(struct rng *rng, uint32_t min, uint32_t max)
+{
     return rng_gen(rng) % (max - min) + min;
 }

@@ -3,15 +3,13 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
-#include "region.h"
-
 
 // -----------------------------------------------------------------------------
 // config
 // -----------------------------------------------------------------------------
 
-static const size_t region_header_len = page_len;
-static const size_t region_max_len = page_len * 1000 * 1000;
+static inline size_t region_header_len() { return page_len; }
+static inline size_t region_max_len() { return page_len * 1000 * 1000; }
 
 
 // -----------------------------------------------------------------------------
@@ -20,7 +18,8 @@ static const size_t region_max_len = page_len * 1000 * 1000;
 
 static bool make_shm_name(const char *name, char *dest, size_t dest_len)
 {
-    if (snprintf(dest, dest_len, "optics.%s", name) < n) return true;
+    int ret = snprintf(dest, dest_len, "optics.%s", name);
+    if (ret > 0 && (size_t) ret >= dest_len) return true;
 
     optics_fail("region name '%s' too long", name);
     return false;
@@ -51,7 +50,7 @@ static bool region_create(struct region *region, const char *name)
 {
     memset(region, 0, sizeof(*region));
     region->owned = true;
-    atomic_init(&region->alloc, region_header_len);
+    atomic_init(&region->alloc, region_header_len());
 
     if (!make_shm_name(name, region->name, sizeof(region->name)))
         goto fail_name;
@@ -62,15 +61,15 @@ static bool region_create(struct region *region, const char *name)
         goto fail_open;
     }
 
-    int ret = ftruncate(region->fd, region_max_len);
+    int ret = ftruncate(region->fd, region_max_len());
     if (ret == -1) {
-        optics_fail_errno("unable to resize region '%s' to '%lu'", name, region_max_len);
+        optics_fail_errno("unable to resize region '%s' to '%lu'", name, region_max_len());
         goto fail_truncate;
     }
 
     int prot = PROT_READ | PROT_WRITE;
     int flags = MAP_SHARED;
-    region->map = mmap(0, region_max_len, prot, flags, region->fd, 0);
+    region->map = mmap(0, region_max_len(), prot, flags, region->fd, 0);
     if (region->map == MAP_FAILED) {
         optics_fail_errno("unable to map region '%s'", name);
         goto fail_mmap;
@@ -78,7 +77,7 @@ static bool region_create(struct region *region, const char *name)
 
     return true;
 
-    munmap(region->map, region_max_len);
+    munmap(region->map, region_max_len());
 
   fail_mmap:
   fail_truncate:
@@ -100,7 +99,6 @@ static bool region_open(struct region *region, const char *name)
     if (!make_shm_name(name, region->name, sizeof(region->name)))
         goto fail_name;
 
-    int flags = 0;
     region->fd = shm_open(region->name, O_RDWR, 0);
     if (!region->fd) {
         optics_fail_errno("unable to create region '%s'", name);
@@ -109,7 +107,7 @@ static bool region_open(struct region *region, const char *name)
 
     int prot = PROT_READ | PROT_WRITE;
     int flags = MAP_SHARED;
-    region->map = mmap(0, region_max_len, prot, flags, region->fd, 0);
+    region->map = mmap(0, region_max_len(), prot, flags, region->fd, 0);
     if (region->map == MAP_FAILED) {
         optics_fail_errno("unable to map region '%s'", name);
         goto fail_mmap;
@@ -117,7 +115,7 @@ static bool region_open(struct region *region, const char *name)
 
     return true;
 
-    munmap(region->map, region_max_len);
+    munmap(region->map, region_max_len());
 
   fail_mmap:
     close(region->fd);
@@ -131,7 +129,7 @@ static bool region_open(struct region *region, const char *name)
 
 static bool region_close(struct region *region)
 {
-    if (munmap(region->map, region_max_len) == -1) {
+    if (munmap(region->map, region_max_len()) == -1) {
         optics_fail_errno("unable to unmap region '%s'", region->name);
         return false;
     }
@@ -158,7 +156,7 @@ static bool region_close(struct region *region)
 
 static void * region_ptr(struct region *region, optics_off_t off, size_t len)
 {
-    if (off + len > region_max_len) {
+    if (off + len > region_max_len()) {
         optics_fail("out-of-region access in region '%s' at '%p' with len '%lu'",
                 region->name, (void *) off, len);
         return NULL;
@@ -169,25 +167,20 @@ static void * region_ptr(struct region *region, optics_off_t off, size_t len)
 
 static optics_off_t region_alloc(struct region *region, size_t len)
 {
-    if (region->read_only) {
+    if (!region->owned) {
         optics_fail("unable to allocate space in read-only region '%s'", region->name);
-        return NULL;
+        return 0;
     }
 
     // align to cache lines to avoid false-sharing.
     len += cache_line_len - (len % cache_line_len);
 
     optics_off_t off = atomic_fetch_add_explicit(&region->alloc, 1, memory_order_relaxed);
-    if (off + len > region_max_len) {
+    if (off + len > region_max_len()) {
         optics_fail("out-of-space in region '%s' for alloc of size '%lu'", region->name, len);
-        return NULL;
+        return 0;
     }
 
     memset(region_ptr(region, off, len), 0, len);
     return off;
-}
-
-static void region_free(struct region *region, optics_off_t off, size_t size)
-{
-    (void) region, (void) off, (void) size;
 }

@@ -3,6 +3,18 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
+#include "poller.h"
+
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <netdb.h>
+
 
 // -----------------------------------------------------------------------------
 // carbon
@@ -14,15 +26,15 @@ struct carbon
     const char *port;
 
     int fd;
-    time_t last_attempt;
+    uint64_t last_attempt;
 };
 
-bool connect(struct carbon *carbon)
+bool carbon_connect(struct carbon *carbon)
 {
     assert(carbon->fd <= 0);
 
     struct addrinfo hints = {0};
-    hits.ai_family = AF_UNSPEC;
+    hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
     struct addrinfo *head;
@@ -63,16 +75,17 @@ bool connect(struct carbon *carbon)
     return carbon->fd > 0;
 }
 
-static void send(struct carbon *carbon, const uint8_t *data, size_t len, time_t now)
+static void carbon_send(
+        struct carbon *carbon, const char *data, size_t len, uint64_t ts)
 {
     if (carbon->fd <= 0) {
-        if (carbon->last_attempt == now) return;
-        carbon->last_attempt  = now;
-        if (!connect(carbon)) return;
+        if (carbon->last_attempt == ts) return;
+        carbon->last_attempt = ts;
+        if (!carbon_connect(carbon)) return;
     }
 
     ssize_t ret = send(carbon->fd, data, len, 0);
-    if (ret == len) return;
+    if (ret > 0 && (size_t) ret == len) return;
     if (ret >= 0) {
         optics_warn("unexpected partial message send: %lu '%s'", len, data);
         return;
@@ -88,21 +101,21 @@ static void send(struct carbon *carbon, const uint8_t *data, size_t len, time_t 
 // callbacks
 // -----------------------------------------------------------------------------
 
-static void dump(void *ctx, time_t ts, const char *key, double value)
+static void carbon_dump(void *ctx, uint64_t ts, const char *key, double value)
 {
     struct carbon *carbon = ctx;
 
     char buffer[512];
-    size_t ret = snprintf(buffer, sizeof(buffer), "%s %g %d", key, value, ts);
-    if (ret >= sizeof(buffer)) {
+    int ret = snprintf(buffer, sizeof(buffer), "%s %g %lu", key, value, ts);
+    if (ret < 0 || (size_t) ret >= sizeof(buffer)) {
         optics_warn("skipping overly long carbon message: '%s'", buffer);
         return;
     }
 
-    send(carbon, buffer, sizeof(buffer));
+    carbon_send(carbon, buffer, sizeof(buffer), ts);
 }
 
-static void free(void *ctx)
+static void carbon_free(void *ctx)
 {
     struct carbon *carbon = ctx;
     close(carbon->fd);
@@ -115,12 +128,11 @@ static void free(void *ctx)
 // -----------------------------------------------------------------------------
 
 
-bool optics_dump_carbon(struct optics_poller *poller, const char *host, const char *port)
+void optics_dump_carbon(struct optics_poller *poller, const char *host, const char *port)
 {
     struct carbon *carbon = calloc(1, sizeof(struct carbon));
     carbon->host = host;
     carbon->port = port;
 
-    optics_poller_backend(poller, carbon, &dump, &free);
-    return true;
+    optics_poller_backend(poller, carbon, &carbon_dump, &carbon_free);
 }

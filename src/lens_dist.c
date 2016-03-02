@@ -16,7 +16,8 @@ enum { dist_reservoir_len = 1000 };
 
 struct optics_packed lens_dist_epoch
 {
-    atomic_size_t lock;
+    struct slock lock;
+
     size_t n;
     double max;
     double reservoir[dist_reservoir_len];
@@ -24,7 +25,7 @@ struct optics_packed lens_dist_epoch
 
 struct optics_packed lens_dist
 {
-    struct dist_epoch epochs[2];
+    struct lens_dist_epoch epochs[2];
 };
 
 
@@ -42,15 +43,15 @@ lens_dist_alloc(struct region *region, const char *name)
 static bool
 lens_dist_record(struct optics_lens* lens, optics_epoch_t epoch, double value)
 {
-    struct lens_dist *dist_head = lens_sub_ptr(lens->lens, lens_dist);
+    struct lens_dist *dist_head = lens_sub_ptr(lens->lens, optics_dist);
     if (!dist_head) return false;
 
-    struct lens_dist_epoch *dist = dist_head->epochs[epoch];
+    struct lens_dist_epoch *dist = &dist_head->epochs[epoch];
     slock_lock(&dist->lock);
 
-    size_t i = n;
+    size_t i = dist->n;
     if (i >= dist_reservoir_len)
-        i = rng_gen_range(rng_global(), 0, n);
+        i = rng_gen_range(rng_global(), 0, dist->n);
     if (i < dist_reservoir_len)
         dist->reservoir[i] = value;
 
@@ -73,18 +74,18 @@ static inline size_t lens_dist_p(size_t percentile)
 }
 
 static enum optics_ret
-lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct dist_read *value)
+lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dist *value)
 {
     struct lens_dist *dist_head = lens_sub_ptr(lens->lens, sizeof(struct lens_dist));
     if (!dist_head) return optics_err;
 
-    struct lens_dist_epoch *dist = dist_head->epochs[epoch];
+    struct lens_dist_epoch *dist = &dist_head->epochs[epoch];
 
     double reservoir[dist_reservoir_len];
     {
         // Since we're not locking the active epoch, we shouldn't only contend
         // with straglers which can be delt with by the poller.
-        if (slock_try(&dist->lock)) return optics_busy;
+        if (slock_try_lock(&dist->lock)) return optics_busy;
 
         value->n = dist->n;
         dist->n = 0;

@@ -9,9 +9,11 @@
 
 struct optics_packed lens_gauge
 {
-    atomic_uint64_t value;
+    atomic_uint_fast64_t value;
 };
 
+static_assert(sizeof(atomic_uint_fast64_t) == sizeof(double),
+        "gauge storage needs to be the size of a double");
 
 // -----------------------------------------------------------------------------
 // impl
@@ -43,6 +45,6 @@ lens_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
     struct lens_gauge *gauge = lens_sub_ptr(lens->lens, sizeof(struct lens_gauge));
     if (!gauge) return optics_err;
 
-    *result = (double) atomic_load_explicit(&gauge->value, memory_order_relaxed);
+    *value = (double) atomic_load_explicit(&gauge->value, memory_order_relaxed);
     return optics_ok;
 }

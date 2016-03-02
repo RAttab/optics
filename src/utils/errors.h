@@ -5,6 +5,11 @@
 
 #pragma once
 
+#include "compiler.h"
+
+#include <errno.h>
+#include <stddef.h>
+
 // -----------------------------------------------------------------------------
 // error
 // -----------------------------------------------------------------------------
@@ -24,11 +29,11 @@ struct optics_error
     int backtrace_len;
 };
 
-extern __thread struct optics_error optics_err;
+extern __thread struct optics_error optics_errno;
 
 void optics_abort() optics_noreturn;
 void optics_perror(struct optics_error *err);
-
+size_t optics_strerror(struct optics_error *err, char *dest, size_t len);
 
 // -----------------------------------------------------------------------------
 // fail

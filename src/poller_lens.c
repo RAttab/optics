@@ -12,7 +12,7 @@ static void poller_poll_counter(struct poller_poll_ctx *ctx, struct optics_lens 
 {
     int64_t value;
     if (optics_counter_read(lens, ctx->epoch, &value) != optics_ok) {
-        optics_warn_err("unable to read counter '%s'", ctx->key->buffer);
+        optics_warn("unable to read counter '%s': %s", ctx->key->buffer, optics_errno.msg);
         return;
     }
 
@@ -28,7 +28,7 @@ static void poller_poll_gauge(struct poller_poll_ctx *ctx, struct optics_lens *l
 {
     double value;
     if (optics_gauge_read(lens, ctx->epoch, &value) != optics_ok) {
-        optics_warn_err("unable to read gauge '%s'", ctx->key->buffer);
+        optics_warn("unable to read gauge '%s': %s", ctx->key->buffer, optics_errno.msg);
         return;
     }
 
@@ -49,29 +49,29 @@ static void poller_poll_dist(struct poller_poll_ctx *ctx, struct optics_lens *le
         return;
     }
     else if (ret == optics_err) {
-        optics_warn_err("unable to read dist '%s'", ctx->key->buffer);
+        optics_warn("unable to read dist '%s': %s", ctx->key->buffer, optics_errno.msg);
         return;
     }
 
     size_t old;
 
     old = key_push(ctx->key, "count");
-    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value->n);
+    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value.n);
     key_pop(ctx->key, old);
 
     old = key_push(ctx->key, "p50");
-    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value->p50);
+    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value.p50);
     key_pop(ctx->key, old);
 
     old = key_push(ctx->key, "p90");
-    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value->p90);
+    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value.p90);
     key_pop(ctx->key, old);
 
     old = key_push(ctx->key, "p99");
-    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value->p99);
+    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value.p99);
     key_pop(ctx->key, old);
 
     old = key_push(ctx->key, "max");
-    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value->max);
+    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value.max);
     key_pop(ctx->key, old);
 }

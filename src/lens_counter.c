@@ -10,7 +10,7 @@
 
 struct optics_packed lens_counter
 {
-    atomic_int64_t value[2];
+    atomic_int_fast64_t value[2];
 };
 
 
@@ -27,7 +27,7 @@ lens_counter_alloc(struct region *region, const char *name)
 static bool
 lens_counter_inc(struct optics_lens *lens, optics_epoch_t epoch, int64_t value)
 {
-    struct lens_counter *counter = lens_sub_ptr(lens->lens, lens_counter);
+    struct lens_counter *counter = lens_sub_ptr(lens->lens, optics_counter);
     if (!counter) return false;
 
     atomic_fetch_add_explicit(&counter->value[epoch], value, memory_order_relaxed);
@@ -37,9 +37,9 @@ lens_counter_inc(struct optics_lens *lens, optics_epoch_t epoch, int64_t value)
 static enum optics_ret
 lens_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *value)
 {
-    struct lens_counter *counter = lens_sub_ptr(lens->lens, lens_counter);
+    struct lens_counter *counter = lens_sub_ptr(lens->lens, optics_counter);
     if (!counter) return optics_err;
 
-    *result = atomic_exchange_explicit(&counter->value[epoch], 0, memory_order_relaxed);
+    *value = atomic_exchange_explicit(&counter->value[epoch], 0, memory_order_relaxed);
     return optics_ok;
 }

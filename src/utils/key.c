@@ -5,16 +5,14 @@
 
 #include "key.h"
 
-
 // -----------------------------------------------------------------------------
 // key
 // -----------------------------------------------------------------------------
 
-
 size_t key_push(struct key *key, const char *suffix)
 {
     key->buffer[key->pos] = '.';
-    strcpy(key->buffer + key->pos + 1, suffix);
+    strncpy(key->buffer + key->pos + 1, suffix, sizeof(key->buffer));
 
     size_t old = key->pos;
     key->pos += strlen(suffix) + 1;

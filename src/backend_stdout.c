@@ -3,13 +3,19 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
+#include "poller.h"
+
+#include <stdio.h>
+
 
 // -----------------------------------------------------------------------------
 // callbacks
 // -----------------------------------------------------------------------------
 
-static void dump(void *ctx, double ts, const char *key, double value)
+static void stdout_dump(void *ctx, uint64_t ts, const char *key, double value)
 {
+    (void) ctx;
+
     printf("[%lu] %s: %g\n", ts, key, value);
 }
 
@@ -20,5 +26,5 @@ static void dump(void *ctx, double ts, const char *key, double value)
 
 void optics_dump_stdout(struct optics_poller *poller)
 {
-    optics_poller_backend(poller, NULL, &dump, NULL);
+    optics_poller_backend(poller, NULL, stdout_dump, NULL);
 }

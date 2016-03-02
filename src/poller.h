@@ -7,6 +7,8 @@
 
 #include "optics.h"
 
+#include <time.h>
+
 
 // -----------------------------------------------------------------------------
 // poller
@@ -17,9 +19,9 @@ struct optics_poller;
 struct optics_poller *optics_poller_new();
 void optics_poller_free(struct optics_poller *);
 
-typedef bool (*optics_backend_cb_t) (void *ctx, time_t ts, const char *key, double value);
+typedef void (*optics_backend_cb_t) (void *ctx, uint64_t ts, const char *key, double value);
 typedef void (*optics_backend_free_t) (void *ctx);
-void optics_poller_backend(
+bool optics_poller_backend(
         struct optics_poller *, void *ctx, optics_backend_cb_t cb, optics_backend_free_t free);
 
 
@@ -27,5 +29,5 @@ void optics_poller_backend(
 // backends
 // -----------------------------------------------------------------------------
 
-bool optics_dump_stdout(struct optics_poller *);
-bool optics_dump_carbon(struct optics_poller *, const char *host, int port);
+void optics_dump_stdout(struct optics_poller *);
+void optics_dump_carbon(struct optics_poller *, const char *host, const char *port);

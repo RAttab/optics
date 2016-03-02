@@ -9,6 +9,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 
 // -----------------------------------------------------------------------------
@@ -26,10 +27,10 @@ struct optics;
 
 struct optics * optics_open(const char *name);
 struct optics * optics_create(const char *name);
-void optics_close(struct optics *, const char *name);
+void optics_close(struct optics *);
 
 const char *optics_get_prefix(struct optics *);
-void optics_set_prefix(struct optics *, const char *prefix);
+bool optics_set_prefix(struct optics *, const char *prefix);
 
 typedef size_t optics_epoch_t;
 optics_epoch_t optics_epoch(struct optics *optics);
@@ -59,11 +60,11 @@ enum optics_ret
 struct optics_lens * optics_lens_get(struct optics *, const char *name);
 enum lens_type optics_lens_type(struct optics_lens *);
 const char * optics_lens_name(struct optics_lens *);
-bool optics_lens_close(struct optics_lens *);
+void optics_lens_close(struct optics_lens *);
 bool optics_lens_free(struct optics_lens *);
 
 typedef bool (*optics_foreach_t) (void *ctx, struct optics_lens *lens);
-int optics_foreach_lens(struct optics *, void *ctx, optics_foreach_t cb);
+bool optics_foreach_lens(struct optics *, void *ctx, optics_foreach_t cb);
 
 
 // -----------------------------------------------------------------------------
