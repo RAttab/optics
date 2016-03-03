@@ -16,7 +16,8 @@ static void rdtsc(uint64_t *t, uint64_t *u)
 
 struct rng *rng_global()
 {
-    static __thread struct rng rng;
+    static __thread struct rng rng = {0};
+    if (!rng.x && !rng.y && !rng.z && !rng.w) rng_init(&rng);
     return &rng;
 }
 

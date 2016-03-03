@@ -9,7 +9,7 @@
 // -----------------------------------------------------------------------------
 
 static inline size_t region_header_len() { return page_len; }
-static inline size_t region_max_len() { return page_len * 1000 * 1000; }
+static inline size_t region_max_len() { return page_len * 1000; }
 
 
 // -----------------------------------------------------------------------------
@@ -19,7 +19,7 @@ static inline size_t region_max_len() { return page_len * 1000 * 1000; }
 static bool make_shm_name(const char *name, char *dest, size_t dest_len)
 {
     int ret = snprintf(dest, dest_len, "optics.%s", name);
-    if (ret > 0 && (size_t) ret >= dest_len) return true;
+    if (ret > 0 && (size_t) ret < dest_len) return true;
 
     optics_fail("region name '%s' too long", name);
     return false;
@@ -46,8 +46,25 @@ struct region
 // open/close
 // -----------------------------------------------------------------------------
 
+static bool region_unlink(const char *name)
+{
+    char shm_name[NAME_MAX];
+    if (!make_shm_name(name, shm_name, sizeof(shm_name)))
+        return false;
+
+    if (shm_unlink(shm_name) == -1) {
+        optics_fail_errno("unable to unlink region '%s'", shm_name);
+        return false;
+    }
+
+    return true;
+}
+
 static bool region_create(struct region *region, const char *name)
 {
+    // Wipe any leftover regions if exists.
+    (void) region_unlink(name);
+
     memset(region, 0, sizeof(*region));
     region->owned = true;
     atomic_init(&region->alloc, region_header_len());
@@ -55,8 +72,8 @@ static bool region_create(struct region *region, const char *name)
     if (!make_shm_name(name, region->name, sizeof(region->name)))
         goto fail_name;
 
-    region->fd = shm_open(region->name, O_RDWR | O_CREAT | O_TRUNC, 0600);
-    if (!region->fd) {
+    region->fd = shm_open(region->name, O_RDWR | O_CREAT | O_EXCL, 0600);
+    if (region->fd == -1) {
         optics_fail_errno("unable to create region '%s'", name);
         goto fail_open;
     }
@@ -100,7 +117,7 @@ static bool region_open(struct region *region, const char *name)
         goto fail_name;
 
     region->fd = shm_open(region->name, O_RDWR, 0);
-    if (!region->fd) {
+    if (region->fd == -1) {
         optics_fail_errno("unable to create region '%s'", name);
         goto fail_open;
     }

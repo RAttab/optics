@@ -124,6 +124,11 @@ void optics_close(struct optics *optics)
     free(optics);
 }
 
+bool optics_unlink(const char *name)
+{
+    return region_unlink(name);
+}
+
 const char *optics_get_prefix(struct optics *optics)
 {
     return optics->header->prefix;
