@@ -192,21 +192,23 @@ optics_remove_lens(struct optics *optics, struct lens *lens)
     return true;
 }
 
-bool optics_foreach_lens(struct optics *optics, void *ctx, optics_foreach_t cb)
+int optics_foreach_lens(struct optics *optics, void *ctx, optics_foreach_t cb)
 {
     optics_off_t off = atomic_load_explicit(&optics->header->head, memory_order_acquire);
     while (off) {
+
         struct lens *lens = lens_ptr(&optics->region, off);
+        if (!lens) return -1;
 
         if (!lens_is_dead(lens)) {
             struct optics_lens ol = { .optics = optics, .lens = lens };
-            if (!cb(ctx, &ol)) return false;
+            if (!cb(ctx, &ol)) return 0;
         }
 
         off = lens_next(lens);
     }
 
-    return true;
+    return 1;
 }
 
 
@@ -245,6 +247,13 @@ struct optics_lens * optics_lens_get(struct optics *optics, const char *name)
     return lens;
 }
 
+static bool optics_lens_test(struct optics *optics, const char *name)
+{
+    struct optics_lens result;
+    struct get_cb_ctx ctx = { .name = name, .result = &result };
+    return !optics_foreach_lens(optics, &ctx, optics_lens_get_cb);
+}
+
 void optics_lens_close(struct optics_lens *lens)
 {
     free(lens);
@@ -275,6 +284,11 @@ const char * optics_lens_name(struct optics_lens *l)
 
 struct optics_lens * optics_counter_alloc(struct optics *optics, const char *name)
 {
+    if (optics_lens_test(optics, name)) {
+        optics_fail("lens '%s' already exists", name);
+        return NULL;
+    }
+
     struct lens *counter = lens_counter_alloc(&optics->region, name);
     if (!counter) return NULL;
 
@@ -304,6 +318,11 @@ optics_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *val
 
 struct optics_lens * optics_gauge_alloc(struct optics *optics, const char *name)
 {
+    if (optics_lens_test(optics, name)) {
+        optics_fail("lens '%s' already exists", name);
+        return NULL;
+    }
+
     struct lens *gauge = lens_gauge_alloc(&optics->region, name);
     if (!gauge) return NULL;
 
@@ -333,6 +352,11 @@ optics_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
 
 struct optics_lens * optics_dist_alloc(struct optics *optics, const char *name)
 {
+    if (optics_lens_test(optics, name)) {
+        optics_fail("lens '%s' already exists", name);
+        return NULL;
+    }
+
     struct lens *dist = lens_dist_alloc(&optics->region, name);
     if (!dist) return NULL;
 

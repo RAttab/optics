@@ -14,6 +14,7 @@ __thread struct optics_error optics_errno = { 0 };
 void optics_abort()
 {
     optics_perror(&optics_errno);
+    optics_log_dump();
     abort();
 }
 

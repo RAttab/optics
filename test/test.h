@@ -6,11 +6,14 @@
 #pragma once
 
 #include "optics.h"
+#include "utils/thread.h"
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <string.h>
 
 #include <cmocka.h>
 
@@ -35,7 +38,10 @@
 // asserts
 // -----------------------------------------------------------------------------
 
-inline void assert_float_equal(double a, double b, double epsilon)
-{
-    assert_true(fabs(a - b) <= epsilon);
-}
+#define assert_float_equal(a, b, epsilon)                       \
+    do {                                                        \
+        if (fabs(a - b) <= epsilon) break;                      \
+        printf("fabs(%g - %g) <= %g\n",                         \
+                (double) a, (double) b , (double) epsilon);     \
+        assert_true(false);                                     \
+    } while(false)

@@ -10,7 +10,7 @@
 // open/close
 // -----------------------------------------------------------------------------
 
-optics_test_head(open_close_test)
+optics_test_head(region_open_close_test)
 {
     for (size_t i = 0; i < 3; ++i) {
         assert_null(optics_open(test_name));
@@ -36,7 +36,7 @@ void optics_crash(void) {}
 
 // This test leaks intentionally since we're trying to re-create what happens
 // after a crash.
-optics_test_head(unlink_test)
+optics_test_head(region_unlink_test)
 {
     assert_false(optics_unlink(test_name));
 
@@ -56,7 +56,7 @@ optics_test_tail()
 // prefix
 // -----------------------------------------------------------------------------
 
-optics_test_head(prefix_test)
+optics_test_head(region_prefix_test)
 {
     struct optics *writer = optics_create(test_name);
     assert_string_equal(optics_get_prefix(writer), test_name);
@@ -78,7 +78,7 @@ optics_test_tail()
 // epoch
 // -----------------------------------------------------------------------------
 
-optics_test_head(epoch_test)
+optics_test_head(region_epoch_test)
 {
     struct optics *writer = optics_create(test_name);
     struct optics *reader = optics_open(test_name);
@@ -105,10 +105,10 @@ optics_test_tail()
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(open_close_test),
-        cmocka_unit_test(unlink_test),
-        cmocka_unit_test(prefix_test),
-        cmocka_unit_test(epoch_test),
+        cmocka_unit_test(region_open_close_test),
+        cmocka_unit_test(region_unlink_test),
+        cmocka_unit_test(region_prefix_test),
+        cmocka_unit_test(region_epoch_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -9,7 +9,7 @@
 // -----------------------------------------------------------------------------
 
 static inline size_t region_header_len() { return page_len; }
-static inline size_t region_max_len() { return page_len * 1000; }
+static inline size_t region_max_len() { return page_len * 1000 * 1000; }
 
 
 // -----------------------------------------------------------------------------
@@ -192,7 +192,7 @@ static optics_off_t region_alloc(struct region *region, size_t len)
     // align to cache lines to avoid false-sharing.
     len += cache_line_len - (len % cache_line_len);
 
-    optics_off_t off = atomic_fetch_add_explicit(&region->alloc, 1, memory_order_relaxed);
+    optics_off_t off = atomic_fetch_add_explicit(&region->alloc, len, memory_order_relaxed);
     if (off + len > region_max_len()) {
         optics_fail("out-of-space in region '%s' for alloc of size '%lu'", region->name, len);
         return 0;

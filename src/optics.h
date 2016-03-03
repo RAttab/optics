@@ -5,6 +5,10 @@
 
 #pragma once
 
+#define OPTICS_LOG
+#define OPTICS_LOG_RING 1
+#include "utils/log.h"
+
 #include "utils/errors.h"
 
 #include <stddef.h>
@@ -65,7 +69,7 @@ void optics_lens_close(struct optics_lens *);
 bool optics_lens_free(struct optics_lens *);
 
 typedef bool (*optics_foreach_t) (void *ctx, struct optics_lens *lens);
-bool optics_foreach_lens(struct optics *, void *ctx, optics_foreach_t cb);
+int optics_foreach_lens(struct optics *, void *ctx, optics_foreach_t cb);
 
 
 // -----------------------------------------------------------------------------

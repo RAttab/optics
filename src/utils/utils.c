@@ -10,6 +10,7 @@
 #include "time.h"
 #include "rng.h"
 #include "key.h"
+#include "lock.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,7 @@
 #include <pthread.h>
 #include <execinfo.h>
 
+#include "log.c"
 #include "errors.c"
 #include "thread.c"
 #include "time.c"

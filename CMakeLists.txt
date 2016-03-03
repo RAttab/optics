@@ -35,6 +35,10 @@ add_definitions("-Wno-strict-aliasing")
 # clang rejects standard compliant `{0}` struct initializers. It's a known bug.
 add_definitions("-Wno-missing-field-initializers")
 
+# Our log utils needs the format to be passed through a function and I really
+# don't see the issue with that so...
+add_definitions("-Wno-format-nonliteral")
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -std=gnu11 -pthread -D_GNU_SOURCE")
 
 
@@ -106,14 +110,22 @@ function(optics_cmocka_test name)
         add_test(${name}_test bin/${name}_test)
         set_tests_properties(${name}_test PROPERTIES LABELS "test")
 
-        if(VALGRIND_EXEC)
-            add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS} bin/${name}_test)
-            set_tests_properties(${name}_valgrind PROPERTIES LABELS "valgrind")
-        endif()
+        # \todo valgrind is SUPER slow when we use large shm regions so it's
+        # currently impractical. Should be re-enabled once we have resizing
+        # regions.
+        #
+        # if(VALGRIND_EXEC)
+        #     add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS} bin/${name}_test)
+        #     set_tests_properties(${name}_valgrind PROPERTIES LABELS "valgrind")
+        # endif()
     endif()
 endfunction()
 
 optics_cmocka_test(region)
+optics_cmocka_test(lens)
+optics_cmocka_test(lens_gauge)
+optics_cmocka_test(lens_counter)
+optics_cmocka_test(lens_dist)
 
 
 #------------------------------------------------------------------------------#
@@ -132,6 +144,10 @@ function(optics_cmocka_bench name)
 endfunction()
 
 optics_cmocka_bench(bench)
+optics_cmocka_bench(lens)
+optics_cmocka_bench(lens_gauge)
+optics_cmocka_bench(lens_counter)
+optics_cmocka_bench(lens_dist)
 
 
 #------------------------------------------------------------------------------#

@@ -68,24 +68,26 @@ static int lens_dist_value_cmp(const void *lhs, const void *rhs)
     return *((double *) lhs) - *((double *) rhs);
 }
 
-static inline size_t lens_dist_p(size_t percentile)
+static inline size_t lens_dist_p(size_t percentile, size_t n)
 {
-    return (dist_reservoir_len * percentile) / 100;
+    return (n * percentile) / 100;
 }
 
 static enum optics_ret
 lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dist *value)
 {
-    struct lens_dist *dist_head = lens_sub_ptr(lens->lens, sizeof(struct lens_dist));
+    struct lens_dist *dist_head = lens_sub_ptr(lens->lens, optics_dist);
     if (!dist_head) return optics_err;
 
     struct lens_dist_epoch *dist = &dist_head->epochs[epoch];
+    memset(value, 0, sizeof(*value));
 
+    size_t entries;
     double reservoir[dist_reservoir_len];
     {
         // Since we're not locking the active epoch, we shouldn't only contend
         // with straglers which can be delt with by the poller.
-        if (slock_try_lock(&dist->lock)) return optics_busy;
+        if (!slock_try_lock(&dist->lock)) return optics_busy;
 
         value->n = dist->n;
         dist->n = 0;
@@ -93,16 +95,20 @@ lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dis
         value->max = dist->max;
         dist->max = 0;
 
+        entries = value->n <= dist_reservoir_len ? value->n : dist_reservoir_len;
+
         // delay the sorting until we're not holding on the lock.
-        memcpy(reservoir, dist->reservoir, dist_reservoir_len * sizeof(double));
+        memcpy(reservoir, dist->reservoir, entries * sizeof(double));
 
         slock_unlock(&dist->lock);
     }
 
-    qsort(reservoir, dist_reservoir_len, sizeof(double), lens_dist_value_cmp);
-    value->p50 = reservoir[lens_dist_p(50)];
-    value->p90 = reservoir[lens_dist_p(90)];
-    value->p99 = reservoir[lens_dist_p(99)];
+    if (entries > 0) {
+        qsort(reservoir, entries, sizeof(double), lens_dist_value_cmp);
+        value->p50 = reservoir[lens_dist_p(50, entries)];
+        value->p90 = reservoir[lens_dist_p(90, entries)];
+        value->p99 = reservoir[lens_dist_p(99, entries)];
+    }
 
     return optics_ok;
 }
