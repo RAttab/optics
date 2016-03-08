@@ -106,7 +106,7 @@ void optics_vwarn(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
 
     struct optics_error err = { .errno_ = 0, .file = file, .line = line };
-    (void) vsnprintf(optics_errno.msg, OPTICS_ERR_MSG_CAP, fmt, args);
+    (void) vsnprintf(err.msg, OPTICS_ERR_MSG_CAP, fmt, args);
     optics_backtrace(&err);
 
     optics_perror(&err);

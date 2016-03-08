@@ -11,6 +11,7 @@
 #include "rng.h"
 #include "key.h"
 #include "lock.h"
+#include "shm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,10 +19,12 @@
 #include <string.h>
 #include <stdatomic.h>
 
+#include <sys/types.h>
 #include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <execinfo.h>
+#include <dirent.h>
 
 #include "log.c"
 #include "errors.c"
@@ -29,3 +32,4 @@
 #include "time.c"
 #include "rng.c"
 #include "key.c"
+#include "shm.c"

@@ -7,6 +7,7 @@
 #include "utils/compiler.h"
 #include "utils/lock.h"
 #include "utils/rng.h"
+#include "utils/shm.h"
 
 #include <assert.h>
 #include <string.h>
@@ -128,6 +129,19 @@ bool optics_unlink(const char *name)
 {
     return region_unlink(name);
 }
+
+int optics_unlink_all_cb(void *ctx, const char *name)
+{
+    (void) ctx;
+    optics_unlink(name);
+    return 1;
+}
+
+bool optics_unlink_all()
+{
+    return shm_foreach(NULL, optics_unlink_all_cb) >= 0;
+}
+
 
 const char *optics_get_prefix(struct optics *optics)
 {

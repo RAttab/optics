@@ -6,13 +6,11 @@
 #include "poller.h"
 #include "utils/key.h"
 #include "utils/time.h"
+#include "utils/shm.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <sys/types.h>
-#include <dirent.h>
-#include <unistd.h>
 
 
 // -----------------------------------------------------------------------------
@@ -46,7 +44,7 @@ struct optics_poller
 // -----------------------------------------------------------------------------
 
 
-struct optics_poller *optics_poller_new()
+struct optics_poller *optics_poller_alloc()
 {
     return calloc(1, sizeof(struct optics_poller));
 }
@@ -133,7 +131,7 @@ static void poller_poll_optics(
         optics_epoch_t epoch,
         time_t ts)
 {
-    struct key *key = calloc(1, sizeof(struct key));
+    struct key *key = calloc(1, sizeof(*key));
     key_push(key, optics_get_prefix(optics));
 
     struct poller_poll_ctx ctx = {
@@ -148,72 +146,57 @@ static void poller_poll_optics(
     free(key);
 }
 
-
-static size_t poller_list_optics(struct optics **list, size_t list_max)
+enum { poller_max_optics = 128 };
+struct poller_list
 {
-    static const char shm_dir[] = "/dev/shm";
-    static const char shm_prefix[] = "optics.";
+    size_t len;
+    struct optics *optics[poller_max_optics];
+    size_t epochs[poller_max_optics];
+};
 
-    DIR *dir = opendir(shm_dir);
-    if (!dir) {
-        optics_fail_errno("unable to open '%s'", shm_dir);
-        optics_abort();
+static int poller_shm_cb(void *ctx, const char *name)
+{
+    struct poller_list *list = ctx;
+
+    list->optics[list->len] = optics_open(name);
+    if (!list->optics[list->len]) {
+        optics_warn("unable to open optics '%s': %s", name, optics_errno.msg);
+        return 1;
     }
 
-    size_t list_len = 0;
-
-    // \todo: use re-entrant readdir_r
-    struct dirent *entry;
-    while ((entry = readdir(dir))) {
-        if (entry->d_type != DT_REG) continue;
-        if (memcmp(entry->d_name, shm_prefix, sizeof(shm_prefix)))
-            continue;
-
-        list[list_len] = optics_open(entry->d_name + sizeof(shm_prefix));
-        if (!list[list_len]) {
-            optics_warn("unable to open optics '%s': %s",
-                    entry->d_name + sizeof(shm_prefix), optics_errno.msg);
-            continue;
-        }
-
-        list_len++;
-        if (list_len >= list_max) {
-            optics_warn("reached optics polling capcity '%lu'", list_max);
-            break;
-        }
+    list->len++;
+    if (list->len >= poller_max_optics) {
+        optics_warn("reached optics polling capcity '%d'", poller_max_optics);
+        return 0;
     }
 
-    if (errno) {
-        optics_fail_errno("unable to read dir '%s'", shm_dir);
-        optics_abort();
-    }
-
-    closedir(dir);
-    return list_len;
+    return 1;
 }
 
-void poller_poll(struct optics_poller *poller)
+bool optics_poller_poll(struct optics_poller *poller)
 {
-    enum { poller_max_optics = 16 };
+    return optics_poller_poll_at(poller, time(NULL));
+}
 
-    struct optics *to_poll[poller_max_optics];
-    size_t to_poll_len = poller_list_optics(to_poll, poller_max_optics);
-    if (!to_poll_len) return;
+bool optics_poller_poll_at(struct optics_poller *poller, time_t ts)
+{
+    struct poller_list to_poll = {0};
+    if (shm_foreach(&to_poll, poller_shm_cb) < 0) return false;
+    if (!to_poll.len) return true;
 
-    optics_epoch_t epochs[to_poll_len];
-    for (size_t i = 0; i < to_poll_len; ++i)
-        epochs[i] = optics_epoch_inc(to_poll[i]);
-
-    time_t ts = time(NULL);
+    for (size_t i = 0; i < to_poll.len; ++i)
+        to_poll.epochs[i] = optics_epoch_inc(to_poll.optics[i]);
 
     // give a chance for stragglers to finish. We'd need full EBR to do this
     // properly but that would add overhead on the record side so we instead
     // just wait a bit and deal with stragglers if we run into them.
     optics_yield();
 
-    for (size_t i = 0; i < to_poll_len; ++i)
-        poller_poll_optics(poller, to_poll[i], epochs[i], ts);
+    for (size_t i = 0; i < to_poll.len; ++i)
+        poller_poll_optics(poller, to_poll.optics[i], to_poll.epochs[i], ts);
 
-    for (size_t i = 0; i < to_poll_len; ++i)
-        optics_close(to_poll[i]);
+    for (size_t i = 0; i < to_poll.len; ++i)
+        optics_close(to_poll.optics[i]);
+
+    return true;
 }

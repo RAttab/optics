@@ -69,7 +69,7 @@ add_library(optics SHARED
     src/utils/utils.c
     src/backend_stdout.c
     src/backend_carbon.c)
-target_link_libraries(optics rt)
+target_link_libraries(optics rt bsd)
 
 add_library(optics_tests SHARED
     test/bench.c
@@ -126,6 +126,8 @@ optics_cmocka_test(lens)
 optics_cmocka_test(lens_gauge)
 optics_cmocka_test(lens_counter)
 optics_cmocka_test(lens_dist)
+optics_cmocka_test(poller)
+optics_cmocka_test(poller_lens)
 
 
 #------------------------------------------------------------------------------#

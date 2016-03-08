@@ -33,6 +33,7 @@ struct optics * optics_open(const char *name);
 struct optics * optics_create(const char *name);
 void optics_close(struct optics *);
 bool optics_unlink(const char *name);
+bool optics_unlink_all();
 
 const char *optics_get_prefix(struct optics *);
 bool optics_set_prefix(struct optics *, const char *prefix);
