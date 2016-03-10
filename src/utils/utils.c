@@ -12,6 +12,7 @@
 #include "key.h"
 #include "lock.h"
 #include "shm.h"
+#include "htable.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,3 +34,4 @@
 #include "rng.c"
 #include "key.c"
 #include "shm.c"
+#include "htable.c"
