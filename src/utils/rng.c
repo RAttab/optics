@@ -21,7 +21,7 @@ struct rng *rng_global()
     return &rng;
 }
 
-void rng_init(struct rng *rng)
+static void rng_init_impl(struct rng *rng, uint64_t t, uint64_t u)
 {
     *rng = (struct rng) {
         .x = 123456789,
@@ -30,13 +30,22 @@ void rng_init(struct rng *rng)
         .w = 88675123
     };
 
-    uint64_t t, u;
-    rdtsc(&t, &u);
-
     rng->x ^= t >> 32;
     rng->y ^= t;
     rng->z ^= u >> 32;
     rng->w ^= u;
+}
+
+void rng_init(struct rng *rng)
+{
+    uint64_t t, u;
+    rdtsc(&t, &u);
+    rng_init_impl(rng, t, u);
+}
+
+void rng_init_seed(struct rng *rng, uint64_t seed)
+{
+    rng_init_impl(rng, seed, seed);
 }
 
 uint32_t rng_gen(struct rng *rng)
@@ -46,6 +55,12 @@ uint32_t rng_gen(struct rng *rng)
     rng->y = rng->z;
     rng->z = rng->w;
     return rng->w = rng->w ^ (rng->w >> 19) ^ (t ^ (t >> 8));
+}
+
+double rng_gen_float(struct rng *rng)
+{
+    static const double rand_mul = 2.32830643653869628906e-010; // 2 ^ -32
+    return rng_gen(rng) * rand_mul;
 }
 
 uint32_t rng_gen_range(struct rng *rng, uint32_t min, uint32_t max)
