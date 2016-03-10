@@ -6,6 +6,7 @@
 #include "optics.h"
 #include "utils/compiler.h"
 #include "utils/type_pun.h"
+#include "utils/htable.h"
 #include "utils/lock.h"
 #include "utils/rng.h"
 #include "utils/shm.h"
@@ -71,6 +72,9 @@ struct optics
 {
     struct region region;
     struct optics_header *header;
+
+    struct slock lock;
+    struct htable keys;
 };
 
 
@@ -231,42 +235,45 @@ int optics_foreach_lens(struct optics *optics, void *ctx, optics_foreach_t cb)
 // lens
 // -----------------------------------------------------------------------------
 
-struct get_cb_ctx
-{
-    const char *name;
-    struct optics_lens *result;
-};
-
-
-static bool optics_lens_get_cb(void *ctx_, struct optics_lens *lens)
-{
-    struct get_cb_ctx *ctx = ctx_;
-
-    if (strncmp(lens_name(lens->lens), ctx->name, optics_name_max_len))
-        return true;
-
-    *ctx->result = *lens;
-    return false;
-}
-
 struct optics_lens * optics_lens_get(struct optics *optics, const char *name)
 {
-    struct optics_lens result;
-    struct get_cb_ctx ctx = { .name = name, .result = &result };
+    struct optics_lens *lens = NULL;
 
-    if (optics_foreach_lens(optics, &ctx, optics_lens_get_cb))
-        return NULL;
+    {
+        slock_lock(&optics->lock);
 
-    struct optics_lens *lens = calloc(1, sizeof(*lens));
-    *lens = result;
+        struct htable_ret ret = htable_get(&optics->keys, name);
+        if (ret.ok) {
+            lens = calloc(1, sizeof(*lens));
+            lens->optics = optics;
+            lens->lens = lens_ptr(&optics->region, ret.value);
+        }
+
+        slock_unlock(&optics->lock);
+    }
+
     return lens;
 }
 
-static bool optics_lens_test(struct optics *optics, const char *name)
+static struct optics_lens *
+optics_lens_alloc(struct optics *optics, struct lens *lens)
 {
-    struct optics_lens result;
-    struct get_cb_ctx ctx = { .name = name, .result = &result };
-    return !optics_foreach_lens(optics, &ctx, optics_lens_get_cb);
+    bool ok = false;
+    {
+        slock_lock(&optics->lock);
+
+        ok = htable_put(&optics->keys, lens_name(lens), lens_off(lens)).ok;
+        if (ok) optics_push_lens(optics, lens);
+
+        slock_unlock(&optics->lock);
+    }
+    if (!ok) return NULL;
+
+    struct optics_lens *ol = calloc(1, sizeof(struct optics_lens));
+    ol->optics = optics;
+    ol->lens = lens;
+    return ol;
+
 }
 
 void optics_lens_close(struct optics_lens *lens)
@@ -276,6 +283,16 @@ void optics_lens_close(struct optics_lens *lens)
 
 bool optics_lens_free(struct optics_lens *l)
 {
+    bool ok;
+    {
+        slock_lock(&l->optics->lock);
+
+        ok = htable_del(&l->optics->keys, lens_name(l->lens)).ok;
+
+        slock_unlock(&l->optics->lock);
+    }
+
+    if (!ok) return false;
     if (!optics_remove_lens(l->optics, l->lens)) return false;
     optics_lens_close(l);
     return true;
@@ -299,20 +316,14 @@ const char * optics_lens_name(struct optics_lens *l)
 
 struct optics_lens * optics_counter_alloc(struct optics *optics, const char *name)
 {
-    if (optics_lens_test(optics, name)) {
-        optics_fail("lens '%s' already exists", name);
-        return NULL;
-    }
-
     struct lens *counter = lens_counter_alloc(&optics->region, name);
     if (!counter) return NULL;
 
-    optics_push_lens(optics, counter);
+    struct optics_lens *lens = optics_lens_alloc(optics, counter);
+    if (lens) return lens;
 
-    struct optics_lens *l = calloc(1, sizeof(struct optics_lens));
-    l->optics = optics;
-    l->lens = counter;
-    return l;
+    lens_free(&optics->region, counter);
+    return NULL;
 }
 
 bool optics_counter_inc(struct optics_lens *lens, int64_t value)
@@ -333,20 +344,14 @@ optics_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *val
 
 struct optics_lens * optics_gauge_alloc(struct optics *optics, const char *name)
 {
-    if (optics_lens_test(optics, name)) {
-        optics_fail("lens '%s' already exists", name);
-        return NULL;
-    }
-
     struct lens *gauge = lens_gauge_alloc(&optics->region, name);
     if (!gauge) return NULL;
 
-    optics_push_lens(optics, gauge);
+    struct optics_lens *lens = optics_lens_alloc(optics, gauge);
+    if (lens) return lens;
 
-    struct optics_lens *l = calloc(1, sizeof(struct optics_lens));
-    l->optics = optics;
-    l->lens = gauge;
-    return l;
+    lens_free(&optics->region, gauge);
+    return NULL;
 }
 
 bool optics_gauge_set(struct optics_lens *lens, double value)
@@ -367,20 +372,14 @@ optics_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
 
 struct optics_lens * optics_dist_alloc(struct optics *optics, const char *name)
 {
-    if (optics_lens_test(optics, name)) {
-        optics_fail("lens '%s' already exists", name);
-        return NULL;
-    }
-
     struct lens *dist = lens_dist_alloc(&optics->region, name);
     if (!dist) return NULL;
 
-    optics_push_lens(optics, dist);
+    struct optics_lens *lens = optics_lens_alloc(optics, dist);
+    if (lens) return lens;
 
-    struct optics_lens *l = calloc(1, sizeof(struct optics_lens));
-    l->optics = optics;
-    l->lens = dist;
-    return l;
+    lens_free(&optics->region, dist);
+    return NULL;
 }
 
 bool optics_dist_record(struct optics_lens *lens, double value)

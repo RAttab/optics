@@ -15,7 +15,7 @@ struct slock { atomic_size_t value; };
 
 inline void slock_lock(struct slock *l)
 {
-    bool ret;
+    bool ret = false;
     uint64_t old;
 
     do {

@@ -41,24 +41,23 @@ static double scale_elapsed(double t, char *s)
 
 struct optics_bench
 {
-    void *setup_data;
+    void **setup_data;
     struct sbarrier *setup_barrier;
 
     bool started;
     struct timespec start;
     struct sbarrier *start_barrier;
+    struct sbarrier *stop_barrier;
 
     bool stopped;
     struct timespec stop;
 };
 
-void* optics_bench_setup(struct optics_bench *bench, void *data)
+void *optics_bench_setup(struct optics_bench *bench, void *data)
 {
-    if (data) bench->setup_data = data;
-
+    if (data) *bench->setup_data = data;
     if (bench->setup_barrier) sbarrier_wait(bench->setup_barrier);
-
-    return bench->setup_data;
+    return *bench->setup_data;
 }
 
 void optics_bench_start(struct optics_bench *bench)
@@ -77,6 +76,8 @@ void optics_bench_stop(struct optics_bench *bench)
 
     optics_now(&bench->stop);
     bench->stopped = true;
+
+    if (bench->stop_barrier) sbarrier_wait(bench->stop_barrier);
 }
 
 
@@ -189,7 +190,8 @@ static void bench_st_policy(
 {
     (void) threads;
 
-    struct optics_bench bench = { 0 };
+    void *setup_data;
+    struct optics_bench bench = { .setup_data = &setup_data };
     *dist = run_bench(&bench, fn, ctx, 0, n);
 }
 
@@ -210,8 +212,10 @@ struct bench_mt
     optics_bench_fn_t fn;
 
     double *dist;
+    void *setup_data;
     struct sbarrier setup_barrier;
     struct sbarrier start_barrier;
+    struct sbarrier stop_barrier;
 };
 
 static void bench_thread(size_t id, void *ctx)
@@ -219,8 +223,10 @@ static void bench_thread(size_t id, void *ctx)
     struct bench_mt *data = ctx;
 
     struct optics_bench bench = {
+        .setup_data = &data->setup_data,
         .setup_barrier = &data->setup_barrier,
-        .start_barrier = &data->start_barrier
+        .start_barrier = &data->start_barrier,
+        .stop_barrier = &data->stop_barrier,
     };
     data->dist[id] = run_bench(&bench, data->fn, data->ctx, id, data->n);
 }
@@ -231,6 +237,7 @@ static void bench_mt_policy(
     struct bench_mt data = { .fn = fn, .ctx = ctx, .n = n, .dist = dist };
     sbarrier_init(&data.setup_barrier, threads);
     sbarrier_init(&data.start_barrier, threads);
+    sbarrier_init(&data.stop_barrier, threads);
 
     optics_run_threads(bench_thread, &data, threads);
 }

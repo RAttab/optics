@@ -29,8 +29,6 @@ static uint64_t hash_key(const char *key)
 }
 
 
-
-
 // -----------------------------------------------------------------------------
 // basics
 // -----------------------------------------------------------------------------
@@ -68,7 +66,7 @@ static void htable_resize(struct htable *ht, size_t cap)
 {
     if (cap <= ht->cap) return;
 
-    size_t new_cap = ht->cap;
+    size_t new_cap = ht->cap ? ht->cap : 1;
     while (new_cap < cap) new_cap *= 2;
 
     struct htable_bucket *new_table = calloc(new_cap, sizeof(*new_table));
@@ -101,6 +99,7 @@ void htable_reserve(struct htable *ht, size_t items)
 struct htable_ret htable_get(struct htable *ht, const char *key)
 {
     uint64_t hash = hash_key(key);
+    htable_resize(ht, probe_window);
 
     for (size_t i = 0; i < probe_window; ++i) {
         struct htable_bucket *bucket = &ht->table[(hash + i) % ht->cap];
@@ -117,6 +116,7 @@ struct htable_ret htable_get(struct htable *ht, const char *key)
 struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
 {
     uint64_t hash = hash_key(key);
+    htable_resize(ht, probe_window);
 
     for (size_t i = 0; i < probe_window; ++i) {
         struct htable_bucket *bucket = &ht->table[(hash + i) % ht->cap];
@@ -138,6 +138,7 @@ struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
 struct htable_ret htable_del(struct htable *ht, const char *key)
 {
     uint64_t hash = hash_key(key);
+    htable_resize(ht, probe_window);
 
     for (size_t i = 0; i < probe_window; ++i) {
         struct htable_bucket *bucket = &ht->table[(hash + i) % ht->cap];

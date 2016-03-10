@@ -58,6 +58,12 @@ lens_alloc(
     return lens;
 }
 
+static void lens_free(struct region *region, struct lens *lens)
+{
+    size_t total_len = sizeof(struct lens) + lens->name_len + lens->lens_len;
+    region_free(region, lens->off, total_len);
+}
+
 static struct lens *lens_ptr(struct region *region, optics_off_t off)
 {
     struct lens *lens = region_ptr(region, off, sizeof(struct lens));

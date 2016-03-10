@@ -15,7 +15,7 @@ struct optics_bench;
 typedef void (* optics_bench_fn_t) (
         struct optics_bench *, void * ctx, size_t id, size_t n);
 
-void* optics_bench_setup(struct optics_bench *, void *data);
+void *optics_bench_setup(struct optics_bench *, void *data);
 void optics_bench_start(struct optics_bench *);
 void optics_bench_stop(struct optics_bench *);
 

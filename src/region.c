@@ -201,3 +201,8 @@ static optics_off_t region_alloc(struct region *region, size_t len)
     memset(region_ptr(region, off, len), 0, len);
     return off;
 }
+
+static void region_free(struct region *region, optics_off_t off, size_t len)
+{
+    (void) region, (void) off, (void) len;
+}
