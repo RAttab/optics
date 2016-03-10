@@ -46,3 +46,6 @@ void htable_reserve(struct htable *, size_t items);
 struct htable_ret htable_get(struct htable *, const char *key);
 struct htable_ret htable_put(struct htable *, const char *key, uint64_t value);
 struct htable_ret htable_del(struct htable *, const char *key);
+struct htable_bucket * htable_next(struct htable *, struct htable_bucket *bucket);
+
+void htable_diff(struct htable *a, struct htable *b, struct htable *result);

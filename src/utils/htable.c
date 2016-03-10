@@ -126,6 +126,7 @@ struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
             return (struct htable_ret) { .ok = false, .value = bucket->value };
         }
 
+        ht->len++;
         bucket->key = strndup(key, htable_key_max_len);
         bucket->value = value;
         return (struct htable_ret) { .ok = true };
@@ -146,10 +147,37 @@ struct htable_ret htable_del(struct htable *ht, const char *key)
         if (!bucket->key) continue;
         if (strncmp(bucket->key, key, htable_key_max_len)) continue;
 
+        ht->len--;
         free((char *) bucket->key);
         bucket->key = NULL;
         return (struct htable_ret) { .ok = true, .value = bucket->value };
     }
 
     return (struct htable_ret) { .ok = false };
+}
+
+
+struct htable_bucket * htable_next(
+        struct htable *ht, struct htable_bucket *bucket)
+{
+    if (!ht->table || !bucket) return NULL;
+
+    size_t i = 0;
+    if (bucket) i = (bucket - ht->table) / sizeof(*bucket) + 1;
+
+    for (; i < ht->cap; ++i) {
+        bucket = &ht->table[i];
+        if (bucket->key) return bucket;
+    }
+
+    return NULL;
+}
+
+void htable_diff(struct htable *a, struct htable *b, struct htable *result)
+{
+    struct htable_bucket *it;
+    for (it = htable_next(a, NULL); it; it = htable_next(a, it)) {
+        if (htable_get(b, it->key).ok) continue;
+        htable_put(result, it->key, it->value);
+    }
 }

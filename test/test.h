@@ -8,6 +8,8 @@
 #include "optics.h"
 #include "poller.h"
 #include "utils/thread.h"
+#include "utils/htable.h"
+#include "utils/type_pun.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -45,38 +47,17 @@ bool optics_assert_float_equal(double a, double b, double epsilon);
     assert_true(optics_assert_float_equal(a, b, epsilon))
 
 
-// -----------------------------------------------------------------------------
-// set
-// -----------------------------------------------------------------------------
+bool assert_htable_equal_impl(
+        struct htable *,
+        const struct htable_bucket *buckets,
+        size_t buckets_len,
+        double epsilon);
 
-struct kv
-{
-    const char *key;
-    double value;
-};
+#define make_kv(k, v) {k, pun_dtoi(v)}
 
-struct optics_set
-{
-    size_t n;
-    size_t cap;
-    struct kv *entries;
-};
-
-void optics_set_reset(struct optics_set *);
-bool optics_set_test(struct optics_set *, const char *key);
-bool optics_set_put(struct optics_set *, const char *key, double value);
-void optics_set_diff(
-        struct optics_set *a, struct optics_set *b, struct optics_set *result);
-
-size_t optics_set_print(struct optics_set *, char *dest, size_t max);
-bool optics_set_assert_equal(
-        struct optics_set *, const struct kv *kv, size_t kv_len, double epsilon);
-
-#define make_kv(k, v) {k, v}
-
-#define assert_set_equal(set, eps, ...)                                 \
+#define assert_htable_equal(set, eps, ...)                          \
     do {                                                                \
-        struct kv exp[] = { __VA_ARGS__ };                              \
-        size_t len = sizeof(exp) / sizeof(struct kv);                   \
-        assert_true(optics_set_assert_equal(set, exp, len, eps));       \
+        struct htable_bucket exp[] = { __VA_ARGS__ };                   \
+        size_t len = sizeof(exp) / sizeof(struct htable_bucket);        \
+        assert_true(assert_htable_equal_impl(set, exp, len, eps));  \
     } while (false)
