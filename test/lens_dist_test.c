@@ -179,7 +179,7 @@ optics_test_tail()
 // epoch
 // -----------------------------------------------------------------------------
 
-optics_test_head(lens_dist_epoch_test)
+optics_test_head(lens_dist_epoch_st_test)
 {
     struct optics *optics = optics_create(test_name);
     struct optics_lens *lens = optics_dist_alloc(optics, "my_dist");
@@ -195,6 +195,85 @@ optics_test_head(lens_dist_epoch_test)
         size_t v = i - 1;
         assert_dist_equal(value, n, v, v, v, v, 0);
     }
+
+    optics_lens_close(lens);
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
+// epoch mt
+// -----------------------------------------------------------------------------
+
+struct epoch_test
+{
+    struct optics *optics;
+    struct optics_lens *lens;
+    size_t workers;
+
+    atomic_size_t done;
+};
+
+size_t epoch_test_read_lens(struct epoch_test *test)
+{
+    optics_epoch_t epoch = optics_epoch_inc(test->optics);
+
+    struct optics_dist value;
+    enum optics_ret ret;
+
+    while ((ret = optics_dist_read(test->lens, epoch, &value)) == optics_busy);
+    assert_int_equal(ret, optics_ok);
+
+    return value.n;
+}
+
+void run_epoch_test(size_t id, void *ctx)
+{
+    struct epoch_test *test = ctx;
+    enum { iterations = 1000 * 1000 };
+
+    if (id) {
+        for (size_t i = 0; i < iterations; ++i)
+            optics_dist_record(test->lens, 1.0);
+
+        atomic_fetch_add_explicit(&test->done, 1, memory_order_release);
+    }
+
+    else {
+        size_t done;
+        uint64_t result = 0;
+        size_t writers = test->workers - 1;
+
+        do {
+            result += epoch_test_read_lens(test);
+            done = atomic_load_explicit(&test->done, memory_order_acquire);
+        } while (done < writers);
+
+        // Read whatever is leftover in the remaining epochs
+        for (size_t i = 0; i < 2; ++i)
+            result += epoch_test_read_lens(test);
+
+        // cmocka just plain sucks when it comes to mt.
+        optics_assert(result == writers * iterations, "%lu != %lu",
+                result, writers * iterations);
+    }
+}
+
+optics_test_head(lens_dist_epoch_mt_test)
+{
+    struct optics *optics = optics_create(test_name);
+    struct optics_lens *lens = optics_dist_alloc(optics, "my_dist");
+
+    struct epoch_test data = {
+        .optics = optics,
+        .lens = lens,
+        .workers = optics_cpus(),
+    };
+    optics_run_threads(run_epoch_test, &data, data.workers);
+
+    optics_lens_close(lens);
+    optics_close(optics);
 }
 optics_test_tail()
 
@@ -209,7 +288,8 @@ int main(void)
         cmocka_unit_test(lens_dist_open_close_test),
         cmocka_unit_test(lens_dist_record_read_exact_test),
         cmocka_unit_test(lens_dist_record_read_random_test),
-        cmocka_unit_test(lens_dist_epoch_test),
+        cmocka_unit_test(lens_dist_epoch_st_test),
+        cmocka_unit_test(lens_dist_epoch_mt_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

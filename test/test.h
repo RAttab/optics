@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #include <cmocka.h>
 

@@ -93,6 +93,7 @@ optics_test_head(lens_gauge_epoch_test)
     assert_int_equal(optics_gauge_read(lens, e1, &value), optics_ok);
     assert_float_equal(value, 2.0, 0.0);
 
+    optics_lens_close(lens);
     optics_close(optics);
 }
 optics_test_tail()
