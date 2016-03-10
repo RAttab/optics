@@ -48,8 +48,7 @@ lens_gauge_set(struct optics_lens *lens, optics_epoch_t epoch, double value)
     struct lens_gauge *gauge = lens_sub_ptr(lens->lens, optics_gauge);
     if (!gauge) return false;
 
-    union lens_gauge_convert convert = { .fvalue = value };
-    atomic_store_explicit(&gauge->value, convert.ivalue, memory_order_relaxed);
+    atomic_store_explicit(&gauge->value, pun_dtoi(value), memory_order_relaxed);
     return true;
 }
 
@@ -61,9 +60,8 @@ lens_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
     struct lens_gauge *gauge = lens_sub_ptr(lens->lens, optics_gauge);
     if (!gauge) return optics_err;
 
-    union lens_gauge_convert convert;
-    convert.ivalue = atomic_load_explicit(&gauge->value, memory_order_relaxed);
-    *value = convert.fvalue;
+    uint64_t result = atomic_load_explicit(&gauge->value, memory_order_relaxed);
+    *value = pun_itod(result);
 
     return optics_ok;
 }

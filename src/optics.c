@@ -5,6 +5,7 @@
 
 #include "optics.h"
 #include "utils/compiler.h"
+#include "utils/type_pun.h"
 #include "utils/lock.h"
 #include "utils/rng.h"
 #include "utils/shm.h"
