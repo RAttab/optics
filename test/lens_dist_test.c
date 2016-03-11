@@ -151,7 +151,7 @@ optics_test_head(lens_dist_record_read_random_test)
     }
 
     struct rng rng;
-    rng_init(&rng);
+    rng_seed_with(&rng, 0);
 
     {
         size_t max_val = 0;

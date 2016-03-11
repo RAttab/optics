@@ -8,17 +8,25 @@
 #include <stdint.h>
 
 // -----------------------------------------------------------------------------
-// rng
+// struct
 // -----------------------------------------------------------------------------
 
-struct rng
-{
-    uint32_t x, y, z, w;
-};
+struct rng { bool initialized; uint64_t x; };
+
+
+// -----------------------------------------------------------------------------
+// init
+// -----------------------------------------------------------------------------
 
 struct rng *rng_global();
-void rng_init(struct rng *rng);
-void rng_init_seed(struct rng *rng, uint64_t seed);
-uint32_t rng_gen(struct rng *rng);
+void rng_seed(struct rng *rng);
+void rng_seed_with(struct rng *rng, uint64_t seed);
+
+
+// -----------------------------------------------------------------------------
+// gen
+// -----------------------------------------------------------------------------
+
+uint64_t rng_gen(struct rng *rng);
 double rng_gen_float(struct rng *rng);
-uint32_t rng_gen_range(struct rng *rng, uint32_t min, uint32_t max);
+uint64_t rng_gen_range(struct rng *rng, uint64_t min, uint64_t max);

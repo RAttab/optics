@@ -1,69 +1,70 @@
 /* rng.c
    Rémi Attab (remi.attab@gmail.com), 25 Feb 2016
    FreeBSD-style copyright and disclaimer apply
+
+   Xorshift random number generator for testing and statsd sampling
+
+   See George Marsaglia (2003). Xorshift RNGs.  DOI: 10.18637/jss.v008.i14
+     http://www.jstatsoft.org/article/view/v008i14
+   (section 4, function xor128)
+
+   Current implementation is the xorshift64* variant which has better
+   statistical properties.
 */
 
 #include "rng.h"
 
-static void rdtsc(uint64_t *t, uint64_t *u)
-{
-#ifdef __amd64
-    __asm__ __volatile__ ("rdtsc" : "=a" (*t), "=d" (*u));
-#else
-#error "Read your platform's perf counter here"
-#endif
-}
+
+// -----------------------------------------------------------------------------
+// init
+// -----------------------------------------------------------------------------
 
 struct rng *rng_global()
 {
     static __thread struct rng rng = {0};
-    if (!rng.x && !rng.y && !rng.z && !rng.w) rng_init(&rng);
+    if (!rng.initialized) {
+        rng.initialized = true;
+        rng_seed(&rng);
+    }
     return &rng;
 }
 
-static void rng_init_impl(struct rng *rng, uint64_t t, uint64_t u)
+void rng_seed(struct rng *rng)
 {
-    *rng = (struct rng) {
-        .x = 123456789,
-        .y = 362436069,
-        .z = 521288629,
-        .w = 88675123
-    };
-
-    rng->x ^= t >> 32;
-    rng->y ^= t;
-    rng->z ^= u >> 32;
-    rng->w ^= u;
+    rng_seed_with(rng, optics_rdtsc());
 }
 
-void rng_init(struct rng *rng)
+void rng_seed_with(struct rng *rng, uint64_t seed)
 {
-    uint64_t t, u;
-    rdtsc(&t, &u);
-    rng_init_impl(rng, t, u);
+    // We xor the seed with a randomly chosen number to avoid ending up with a 0
+    // state which would be bad.
+    rng->x = seed ^ UINT64_C(0xedef335f00e170b3);
+    assert(rng->x);
 }
 
-void rng_init_seed(struct rng *rng, uint64_t seed)
+
+
+// -----------------------------------------------------------------------------
+// gen
+// -----------------------------------------------------------------------------
+
+uint64_t rng_gen(struct rng *rng)
 {
-    rng_init_impl(rng, seed, seed);
+    rng->x ^= rng->x >> 12;
+    rng->x ^= rng->x << 25;
+    rng->x ^= rng->x >> 27;
+    return rng->x * UINT64_C(2685821657736338717);
 }
 
-uint32_t rng_gen(struct rng *rng)
-{
-    uint32_t t = rng->x ^ (rng->x << 11);
-    rng->x = rng->y;
-    rng->y = rng->z;
-    rng->z = rng->w;
-    return rng->w = rng->w ^ (rng->w >> 19) ^ (t ^ (t >> 8));
-}
-
+// Directly build the correct bit-pattern for a double using our 64 bit random
+// value. For more details, see: http://xorshift.di.unimi.it/#remarks
 double rng_gen_float(struct rng *rng)
 {
-    static const double rand_mul = 2.32830643653869628906e-010; // 2 ^ -32
-    return rng_gen(rng) * rand_mul;
+    uint64_t x = UINT64_C(0x3FF) << 52 | rng_gen(rng) >> 12;
+    return *((double *) &x) - 1.0;
 }
 
-uint32_t rng_gen_range(struct rng *rng, uint32_t min, uint32_t max)
+uint64_t rng_gen_range(struct rng *rng, uint64_t min, uint64_t max)
 {
     return rng_gen(rng) % (max - min) + min;
 }

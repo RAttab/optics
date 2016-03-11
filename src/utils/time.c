@@ -33,3 +33,16 @@ void optics_yield()
 {
     sched_yield();
 }
+
+uint64_t optics_rdtsc()
+{
+    uint64_t msb, lsb;
+
+#ifdef __amd64
+    __asm__ __volatile__ ("rdtsc" : "=a" (lsb), "=d" (msb));
+#else
+#error "Read your platform's perf counter here"
+#endif
+
+    return msb << 32 | lsb;
+}
