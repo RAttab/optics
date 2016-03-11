@@ -9,7 +9,7 @@
 // tid
 // -----------------------------------------------------------------------------
 
-size_t optics_cpus();
-size_t optics_tid();
+size_t cpus();
+size_t tid();
 
-void optics_run_threads(void (*fn) (size_t, void *), void *data, size_t n);
+void run_threads(void (*fn) (size_t, void *), void *data, size_t n);

@@ -46,7 +46,7 @@ void run_sleep_bench(struct optics_bench *b, void *data, size_t id, size_t n)
     (void) id, (void) data;
     optics_bench_start(b);
 
-    optics_nsleep(n);
+    nsleep(n);
 }
 
 void sleep_bench_st(optics_unused void **state)

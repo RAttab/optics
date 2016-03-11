@@ -14,7 +14,7 @@
 
 enum { clock_type = CLOCK_REALTIME };
 
-#define optics_now(ts)                                                  \
+#define now(ts)                                                         \
     do {                                                                \
         if (optics_unlikely(clock_gettime(clock_type, (ts)) < 0)) {     \
             optics_fail_errno("unable to read realtime clock");         \
@@ -22,13 +22,13 @@ enum { clock_type = CLOCK_REALTIME };
         }                                                               \
     } while (false)
 
-uint64_t optics_rdtsc();
+uint64_t rdtsc();
 
 
 // -----------------------------------------------------------------------------
 // sleep
 // -----------------------------------------------------------------------------
 
-bool optics_nsleep(uint64_t nanos);
-void optics_yield();
+bool nsleep(uint64_t nanos);
+void yield();
 

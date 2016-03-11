@@ -268,9 +268,9 @@ optics_test_head(lens_dist_epoch_mt_test)
     struct epoch_test data = {
         .optics = optics,
         .lens = lens,
-        .workers = optics_cpus(),
+        .workers = cpus(),
     };
-    optics_run_threads(run_epoch_test, &data, data.workers);
+    run_threads(run_epoch_test, &data, data.workers);
 
     optics_lens_close(lens);
     optics_close(optics);

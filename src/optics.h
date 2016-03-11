@@ -5,10 +5,8 @@
 
 #pragma once
 
-#define OPTICS_LOG
-#define OPTICS_LOG_RING 1
+#include "utils/compiler.h"
 #include "utils/log.h"
-
 #include "utils/errors.h"
 
 #include <stddef.h>
@@ -49,7 +47,7 @@ optics_epoch_t optics_epoch_inc(struct optics *optics);
 
 struct optics_lens;
 
-enum lens_type
+enum optics_lens_type
 {
     optics_counter,
     optics_gauge,
@@ -64,7 +62,7 @@ enum optics_ret
 };
 
 struct optics_lens * optics_lens_get(struct optics *, const char *name);
-enum lens_type optics_lens_type(struct optics_lens *);
+enum optics_lens_type optics_lens_type(struct optics_lens *);
 const char * optics_lens_name(struct optics_lens *);
 void optics_lens_close(struct optics_lens *);
 bool optics_lens_free(struct optics_lens *);

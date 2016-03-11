@@ -7,16 +7,21 @@
 
 
 // -----------------------------------------------------------------------------
-// assert
+// assert - float
 // -----------------------------------------------------------------------------
 
-bool optics_assert_float_equal(double a, double b, double epsilon)
+bool assert_float_equal_impl(double a, double b, double epsilon)
 {
     if (fabs(a - b) <= epsilon) return true;
 
     printf("fabs(%g - %g) <= %g\n", a, b, epsilon);
     return false;
 }
+
+
+// -----------------------------------------------------------------------------
+// assert - htable
+// -----------------------------------------------------------------------------
 
 static size_t htable_print(struct htable *ht, char *dest, size_t max)
 {
@@ -68,7 +73,7 @@ bool assert_htable_equal_impl(
         double a_value = pun_itod(it->value);
         double b_value = pun_itod(ret.value);
 
-        if (!optics_assert_float_equal(a_value, b_value, epsilon)) {
+        if (!assert_float_equal_impl(a_value, b_value, epsilon)) {
             printf("  -> %s\n", it->key);
             result = false;
         }

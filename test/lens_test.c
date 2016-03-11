@@ -118,7 +118,7 @@ void run_basics_mt(size_t thread_id, void *ctx)
 optics_test_head(lens_basics_mt_test)
 {
     struct optics *optics = optics_create(test_name);
-    optics_run_threads(run_basics_mt, optics, 0);
+    run_threads(run_basics_mt, optics, 0);
     optics_close(optics);
 }
 optics_test_tail()

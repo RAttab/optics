@@ -10,12 +10,15 @@
 #include <errno.h>
 #include <stddef.h>
 
+
 // -----------------------------------------------------------------------------
 // error
 // -----------------------------------------------------------------------------
 
-#define OPTICS_ERR_MSG_CAP 1024UL
-#define OPTICS_ERR_BACKTRACE_CAP 256
+enum {
+    optics_err_msg_cap = 1024,
+    optics_err_backtrace_cap = 256,
+};
 
 struct optics_error
 {
@@ -23,9 +26,9 @@ struct optics_error
     int line;
 
     int errno_; // errno can be a macro hence the underscore.
-    char msg[OPTICS_ERR_MSG_CAP];
+    char msg[optics_err_msg_cap];
 
-    void *backtrace[OPTICS_ERR_BACKTRACE_CAP];
+    void *backtrace[optics_err_backtrace_cap];
     int backtrace_len;
 };
 
@@ -34,6 +37,7 @@ extern __thread struct optics_error optics_errno;
 void optics_abort() optics_noreturn;
 void optics_perror(struct optics_error *err);
 size_t optics_strerror(struct optics_error *err, char *dest, size_t len);
+
 
 // -----------------------------------------------------------------------------
 // fail

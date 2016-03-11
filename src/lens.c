@@ -12,7 +12,7 @@ struct optics_packed lens
 {
     optics_off_t off;
 
-    enum lens_type type;
+    enum optics_lens_type type;
     size_t lens_len;
     size_t name_len;
 
@@ -34,7 +34,7 @@ static char * lens_name_ptr(struct lens *lens)
 static struct lens *
 lens_alloc(
         struct region *region,
-        enum lens_type type,
+        enum optics_lens_type type,
         size_t lens_len,
         const char *name)
 {
@@ -73,7 +73,7 @@ static struct lens *lens_ptr(struct region *region, optics_off_t off)
     return region_ptr(region, off, total_len);
 }
 
-static void * lens_sub_ptr(struct lens *lens, enum lens_type type)
+static void * lens_sub_ptr(struct lens *lens, enum optics_lens_type type)
 {
     if (lens->type != type) {
         optics_fail("invalid lens type: %d != %d", lens->type, type);
@@ -93,7 +93,7 @@ static optics_off_t lens_off(struct lens *lens)
     return lens->off;
 }
 
-static enum lens_type lens_type(struct lens *lens)
+static enum optics_lens_type lens_type(struct lens *lens)
 {
     return lens->type;
 }

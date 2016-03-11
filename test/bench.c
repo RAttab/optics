@@ -67,14 +67,14 @@ void optics_bench_start(struct optics_bench *bench)
 
     if (bench->start_barrier) sbarrier_wait(bench->start_barrier);
 
-    optics_now(&bench->start);
+    now(&bench->start);
 }
 
 void optics_bench_stop(struct optics_bench *bench)
 {
     optics_no_opt_clobber(); // make sure everything is done before we stop.
 
-    optics_now(&bench->stop);
+    now(&bench->stop);
     bench->stopped = true;
 
     if (bench->stop_barrier) sbarrier_wait(bench->stop_barrier);
@@ -239,15 +239,15 @@ static void bench_mt_policy(
     sbarrier_init(&data.start_barrier, threads);
     sbarrier_init(&data.stop_barrier, threads);
 
-    optics_run_threads(bench_thread, &data, threads);
+    run_threads(bench_thread, &data, threads);
 }
 
 void optics_bench_mt(const char *title, optics_bench_fn_t fn, void *ctx)
 {
-    if (optics_cpus() == 1) {
+    if (cpus() == 1) {
         printf("bench: %-30s -- mono-core system, skip", title);
         return;
     }
 
-    bench_runner(bench_mt_policy, title, fn, ctx, optics_cpus());
+    bench_runner(bench_mt_policy, title, fn, ctx, cpus());
 }

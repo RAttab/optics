@@ -8,10 +8,10 @@
 // time
 // -----------------------------------------------------------------------------
 
-bool optics_nsleep(uint64_t nanos)
+bool nsleep(uint64_t nanos)
 {
     struct timespec ts;
-    optics_now(&ts);
+    now(&ts);
 
     ts.tv_nsec += nanos;
     if (ts.tv_nsec >= 1000000000) {
@@ -29,12 +29,12 @@ bool optics_nsleep(uint64_t nanos)
     }
 }
 
-void optics_yield()
+void yield()
 {
     sched_yield();
 }
 
-uint64_t optics_rdtsc()
+uint64_t rdtsc()
 {
     uint64_t msb, lsb;
 

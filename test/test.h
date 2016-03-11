@@ -42,10 +42,10 @@
 // asserts
 // -----------------------------------------------------------------------------
 
-bool optics_assert_float_equal(double a, double b, double epsilon);
+bool assert_float_equal_impl(double a, double b, double epsilon);
 
 #define assert_float_equal(a, b, epsilon)                       \
-    assert_true(optics_assert_float_equal(a, b, epsilon))
+    assert_true(assert_float_equal_impl(a, b, epsilon))
 
 
 bool assert_htable_equal_impl(

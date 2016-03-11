@@ -299,7 +299,7 @@ bool optics_lens_free(struct optics_lens *l)
 }
 
 
-enum lens_type optics_lens_type(struct optics_lens *l)
+enum optics_lens_type optics_lens_type(struct optics_lens *l)
 {
     return lens_type(l->lens);
 }

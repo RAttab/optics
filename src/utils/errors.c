@@ -25,11 +25,11 @@ size_t optics_strerror(struct optics_error *err, char *dest, size_t len)
 
     if (!err->errno_) {
         i = snprintf(dest, len, "<%lu> %s:%d: %s\n",
-                optics_tid(), err->file, err->line, err->msg);
+                tid(), err->file, err->line, err->msg);
     }
     else {
         i = snprintf(dest, len, "<%lu> %s:%d: %s - %s(%d)\n",
-                optics_tid(), err->file, err->line, err->msg,
+                tid(), err->file, err->line, err->msg,
                 strerror(err->errno_), err->errno_);
     }
 
@@ -45,7 +45,7 @@ size_t optics_strerror(struct optics_error *err, char *dest, size_t len)
 
 void optics_perror(struct optics_error *err)
 {
-    char buf[128 + OPTICS_ERR_MSG_CAP + 80 * OPTICS_ERR_BACKTRACE_CAP];
+    char buf[128 + optics_err_msg_cap + 80 * optics_err_backtrace_cap];
     size_t len = optics_strerror(err, buf, sizeof(buf));
 
     if (write(2, buf, len) == -1)
@@ -55,7 +55,7 @@ void optics_perror(struct optics_error *err)
 
 static void optics_backtrace(struct optics_error *err)
 {
-    err->backtrace_len = backtrace(err->backtrace, OPTICS_ERR_BACKTRACE_CAP);
+    err->backtrace_len = backtrace(err->backtrace, optics_err_backtrace_cap);
     if (err->backtrace_len == -1)
         printf("unable to sample backtrace: %s", strerror(errno));
 }
@@ -74,7 +74,7 @@ void optics_vfail(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
 
     optics_errno = (struct optics_error) { .errno_ = 0, .file = file, .line = line };
-    (void) vsnprintf(optics_errno.msg, OPTICS_ERR_MSG_CAP, fmt, args);
+    (void) vsnprintf(optics_errno.msg, optics_err_msg_cap, fmt, args);
 
     optics_backtrace(&optics_errno);
     if (abort_on_fail) optics_abort();
@@ -86,7 +86,7 @@ void optics_vfail_errno(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
 
     optics_errno = (struct optics_error) { .errno_ = errno, .file = file, .line = line };
-    (void) vsnprintf(optics_errno.msg, OPTICS_ERR_MSG_CAP, fmt, args);
+    (void) vsnprintf(optics_errno.msg, optics_err_msg_cap, fmt, args);
 
     optics_backtrace(&optics_errno);
     if (abort_on_fail) optics_abort();
@@ -106,7 +106,7 @@ void optics_vwarn(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
 
     struct optics_error err = { .errno_ = 0, .file = file, .line = line };
-    (void) vsnprintf(err.msg, OPTICS_ERR_MSG_CAP, fmt, args);
+    (void) vsnprintf(err.msg, optics_err_msg_cap, fmt, args);
     optics_backtrace(&err);
 
     optics_perror(&err);
@@ -118,7 +118,7 @@ void optics_vwarn_errno(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
 
     struct optics_error err = { .errno_ = errno, .file = file, .line = line };
-    (void) vsnprintf(optics_errno.msg, OPTICS_ERR_MSG_CAP, fmt, args);
+    (void) vsnprintf(optics_errno.msg, optics_err_msg_cap, fmt, args);
     optics_backtrace(&err);
 
     optics_perror(&err);

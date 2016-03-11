@@ -86,7 +86,7 @@ static void ring_log(const char *title, const char *fmt, va_list args)
     size_t i = ring->pos++ % ring_size;
 
     data[i].tick = tick_inc();
-    data[i].tid = optics_tid();
+    data[i].tid = tid();
     data[i].title = title;
     (void) vsnprintf(data[i].msg, sizeof(data[i].msg), fmt, args);
 }
@@ -156,7 +156,7 @@ void optics_log_impl(const char *title, const char *fmt, ...)
         char *buf = alloca(1024);
         (void) vsnprintf(buf, 1024, fmt, args);
 
-        fprintf(stderr, "[%8lu] <%lu> %s: %s\n", tick_inc(), optics_tid(), title, buf);
+        fprintf(stderr, "[%8lu] <%lu> %s: %s\n", tick_inc(), tid(), title, buf);
     }
 }
 
