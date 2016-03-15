@@ -31,7 +31,7 @@ struct rng *rng_global()
 
 void rng_seed(struct rng *rng)
 {
-    rng_seed_with(rng, rdtsc());
+    rng_seed_with(rng, clock_rdtsc());
 }
 
 void rng_seed_with(struct rng *rng, uint64_t seed)

@@ -178,10 +178,10 @@ optics_test_tail()
 // foreach bench
 // -----------------------------------------------------------------------------
 
-bool foreach_cb(void *ctx, struct optics_lens *lens)
+enum optics_ret foreach_cb(void *ctx, struct optics_lens *lens)
 {
     (void) ctx, (void) lens;
-    return true;
+    return optics_ok;
 }
 
 void run_foreach_bench(struct optics_bench *b, void *data, size_t id, size_t n)

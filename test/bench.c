@@ -67,14 +67,14 @@ void optics_bench_start(struct optics_bench *bench)
 
     if (bench->start_barrier) sbarrier_wait(bench->start_barrier);
 
-    now(&bench->start);
+    clock_realtime(&bench->start);
 }
 
 void optics_bench_stop(struct optics_bench *bench)
 {
     optics_no_opt_clobber(); // make sure everything is done before we stop.
 
-    now(&bench->stop);
+    clock_realtime(&bench->stop);
     bench->stopped = true;
 
     if (bench->stop_barrier) sbarrier_wait(bench->stop_barrier);

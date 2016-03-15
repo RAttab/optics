@@ -136,6 +136,28 @@ struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
     return htable_put(ht, key, value);
 }
 
+struct htable_ret htable_xchg(struct htable *ht, const char *key, uint64_t value)
+{
+    uint64_t hash = hash_key(key);
+    htable_resize(ht, probe_window);
+
+    for (size_t i = 0; i < probe_window; ++i) {
+        struct htable_bucket *bucket = &ht->table[(hash + i) % ht->cap];
+
+        if (!bucket->key)
+            return (struct htable_ret) { .ok = false, .value = bucket->value };
+
+        if (strncmp(bucket->key, key, htable_key_max_len)) continue;
+
+        uint64_t old_value = bucket->value;
+        bucket->value = value;
+        return (struct htable_ret) { .ok = true, .value = old_value };
+    }
+
+    htable_resize(ht, ht->cap * 2);
+    return htable_put(ht, key, value);
+}
+
 struct htable_ret htable_del(struct htable *ht, const char *key)
 {
     uint64_t hash = hash_key(key);
@@ -160,10 +182,10 @@ struct htable_ret htable_del(struct htable *ht, const char *key)
 struct htable_bucket * htable_next(
         struct htable *ht, struct htable_bucket *bucket)
 {
-    if (!ht->table || !bucket) return NULL;
+    if (!ht->table) return NULL;
 
     size_t i = 0;
-    if (bucket) i = (bucket - ht->table) / sizeof(*bucket) + 1;
+    if (bucket) i = (bucket - ht->table) + 1;
 
     for (; i < ht->cap; ++i) {
         bucket = &ht->table[i];

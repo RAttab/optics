@@ -34,6 +34,8 @@ struct backend
 
 struct optics_poller
 {
+    optics_ts_t last_poll;
+
     size_t backends_len;
     struct backend backends[poller_max_backends];
 };
@@ -82,7 +84,7 @@ bool optics_poller_backend(
 }
 
 static void poller_backend_record(
-        struct optics_poller *poller, time_t ts, const char *key, double value)
+        struct optics_poller *poller, optics_ts_t ts, const char *key, double value)
 {
     for (size_t i = 0; i < poller->backends_len; ++i)
         poller->backends[i].cb(poller->backends[i].ctx, ts, key, value);
@@ -93,19 +95,35 @@ static void poller_backend_record(
 // poll
 // -----------------------------------------------------------------------------
 
+enum { poller_max_optics = 128 };
+
+struct poller_list_item
+{
+    struct optics *optics;
+    optics_ts_t last_poll;
+    size_t epoch;
+};
+
+struct poller_list
+{
+    size_t len;
+    struct poller_list_item items[poller_max_optics];
+};
+
 struct poller_poll_ctx
 {
     struct optics_poller *poller;
     optics_epoch_t epoch;
     struct key *key;
-    time_t ts;
+    optics_ts_t ts;
+    optics_ts_t elapsed;
 };
 
 
 #include "poller_lens.c"
 
 
-static bool poller_poll_lens(void *ctx_, struct optics_lens *lens)
+static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
 {
     struct poller_poll_ctx *ctx = ctx_;
 
@@ -121,56 +139,54 @@ static bool poller_poll_lens(void *ctx_, struct optics_lens *lens)
     }
 
     key_pop(ctx->key, old_key);
-    return true;
+    return optics_ok;
 }
 
 
 static void poller_poll_optics(
-        struct optics_poller *poller,
-        struct optics *optics,
-        optics_epoch_t epoch,
-        time_t ts)
+        struct optics_poller *poller, struct poller_list_item *item, optics_ts_t ts)
 {
     struct key *key = calloc(1, sizeof(*key));
-    key_push(key, optics_get_prefix(optics));
+    key_push(key, optics_get_prefix(item->optics));
 
     struct poller_poll_ctx ctx = {
         .poller = poller,
         .ts = ts,
         .key = key,
-        .epoch = epoch,
+        .epoch = item->epoch,
     };
 
-    optics_foreach_lens(optics, &ctx, poller_poll_lens);
+    if (ts > item->last_poll) ctx.elapsed = ts - item->last_poll;
+    else if (ts == item->last_poll) ctx.elapsed = 1;
+    else {
+        optics_warn("clock out of sync for '%s': optics=%lu, poller=%lu",
+                optics_get_prefix(item->optics), item->last_poll, ts);
+        ctx.elapsed = 1;
+    }
+
+    (void) optics_foreach_lens(item->optics, &ctx, poller_poll_lens);
 
     free(key);
 }
 
-enum { poller_max_optics = 128 };
-struct poller_list
-{
-    size_t len;
-    struct optics *optics[poller_max_optics];
-    size_t epochs[poller_max_optics];
-};
-
-static int poller_shm_cb(void *ctx, const char *name)
+static enum shm_ret poller_shm_cb(void *ctx, const char *name)
 {
     struct poller_list *list = ctx;
 
-    list->optics[list->len] = optics_open(name);
-    if (!list->optics[list->len]) {
+    struct optics *optics = optics_open(name);
+    if (!optics) {
         optics_warn("unable to open optics '%s': %s", name, optics_errno.msg);
-        return 1;
+        return shm_ok;
     }
+    list->items[list->len].optics = optics;
 
     list->len++;
     if (list->len >= poller_max_optics) {
         optics_warn("reached optics polling capcity '%d'", poller_max_optics);
-        return 0;
+        return shm_break;
     }
 
-    return 1;
+    return shm_ok;
 }
 
 bool optics_poller_poll(struct optics_poller *poller)
@@ -178,14 +194,16 @@ bool optics_poller_poll(struct optics_poller *poller)
     return optics_poller_poll_at(poller, time(NULL));
 }
 
-bool optics_poller_poll_at(struct optics_poller *poller, time_t ts)
+bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts)
 {
     struct poller_list to_poll = {0};
-    if (shm_foreach(&to_poll, poller_shm_cb) < 0) return false;
+    if (shm_foreach(&to_poll, poller_shm_cb) == shm_err) return false;
     if (!to_poll.len) return true;
 
-    for (size_t i = 0; i < to_poll.len; ++i)
-        to_poll.epochs[i] = optics_epoch_inc(to_poll.optics[i]);
+    for (size_t i = 0; i < to_poll.len; ++i) {
+        struct poller_list_item *item = &to_poll.items[i];
+        item->epoch = optics_epoch_inc_at(item->optics, ts, &item->last_poll);
+    }
 
     // give a chance for stragglers to finish. We'd need full EBR to do this
     // properly but that would add overhead on the record side so we instead
@@ -193,10 +211,10 @@ bool optics_poller_poll_at(struct optics_poller *poller, time_t ts)
     yield();
 
     for (size_t i = 0; i < to_poll.len; ++i)
-        poller_poll_optics(poller, to_poll.optics[i], to_poll.epochs[i], ts);
+        poller_poll_optics(poller, &to_poll.items[i], ts);
 
     for (size_t i = 0; i < to_poll.len; ++i)
-        optics_close(to_poll.optics[i]);
+       optics_close(to_poll.items[i].optics);
 
     return true;
 }

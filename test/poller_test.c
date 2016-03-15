@@ -49,10 +49,10 @@ optics_test_head(poller_multi_lens_test)
     struct optics_poller *poller = optics_poller_alloc();
     optics_poller_backend(poller, &result, backend_cb, NULL);
 
-    struct optics *optics = optics_create(test_name);
-    optics_set_prefix(optics, "bleh");
+    optics_ts_t ts = 0;
 
-    time_t ts = 0;
+    struct optics *optics = optics_create_at(test_name, ts);
+    optics_set_prefix(optics, "bleh");
 
     struct optics_lens *g1 = optics_gauge_alloc(optics, "g1");
     struct optics_lens *g2 = optics_gauge_alloc(optics, "g2");
@@ -115,14 +115,14 @@ optics_test_head(poller_multi_region_test)
     struct optics_poller *poller = optics_poller_alloc();
     optics_poller_backend(poller, &result, backend_cb, NULL);
 
-    time_t ts = 0;
-    struct optics *r1 = optics_create("r1");
+    optics_ts_t ts = 0;
+    struct optics *r1 = optics_create_at("r1", ts);
 
-    struct optics *r2 = optics_create("r2");
+    struct optics *r2 = optics_create_at("r2", ts);
     struct optics_lens *r2_l1 = optics_gauge_alloc(r2, "l1");
     optics_gauge_set(r2_l1, 1.0);
 
-    struct optics *r3 = optics_create("r3");
+    struct optics *r3 = optics_create_at("r3", ts);
     struct optics_lens *r3_l1 = optics_gauge_alloc(r3, "l1");
     struct optics_lens *r3_l2 = optics_gauge_alloc(r3, "l2");
     optics_gauge_set(r3_l1, 2.0);
@@ -138,7 +138,7 @@ optics_test_head(poller_multi_region_test)
     struct optics_lens *r1_l1 = optics_gauge_alloc(r1, "l1");
     optics_lens_close(r2_l1);
     optics_close(r2);
-    struct optics *r4 = optics_create("r4");
+    struct optics *r4 = optics_create_at("r4", ts);
     struct optics_lens *r4_l1 = optics_gauge_alloc(r4, "l1");
     optics_gauge_set(r4_l1, 10.0);
 
@@ -170,6 +170,60 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
+// poller_freq_test
+// -----------------------------------------------------------------------------
+
+optics_test_head(poller_freq_test)
+{
+    struct htable result = {0};
+    struct optics_poller *poller = optics_poller_alloc();
+    optics_poller_backend(poller, &result, backend_cb, NULL);
+
+    optics_ts_t ts = 0;
+
+    struct optics *optics = optics_create_at("r", 20);
+    struct optics_lens *lens = optics_counter_alloc(optics, "l");
+
+    ts += 10;
+    optics_counter_inc(lens, 10);
+
+    // If the optics ts is greater then the poll ts we default back to 1 as the
+    // elapsed time.
+    fprintf(stderr, "\n--- EXPECTED WARNING - START ---\n");
+    htable_reset(&result);
+    assert_true(optics_poller_poll_at(poller, ts));
+    assert_htable_equal(&result, 0, make_kv("r.l", 10));
+    fprintf(stderr, "--- EXPECTED WARNING - END ---\n\n");
+
+    ts += 10;
+    optics_counter_inc(lens, 10);
+
+    htable_reset(&result);
+    assert_true(optics_poller_poll_at(poller, ts));
+    assert_htable_equal(&result, 0, make_kv("r.l", 1));
+
+    ts += 10;
+    optics_counter_inc(lens, 10);
+
+    htable_reset(&result);
+    assert_true(optics_poller_poll_at(poller, ts));
+    assert_htable_equal(&result, 0, make_kv("r.l", 1));
+
+    ts += 0; // not a mistake
+    optics_counter_inc(lens, 10);
+
+    // If the ts is 0 then elapsed is adjusted back to 1.
+    htable_reset(&result);
+    assert_true(optics_poller_poll_at(poller, ts));
+    assert_htable_equal(&result, 0, make_kv("r.l", 10));
+
+    optics_lens_close(lens);
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
 // setup
 // -----------------------------------------------------------------------------
 
@@ -179,6 +233,7 @@ int main(void)
         cmocka_unit_test(poller_nil_test),
         cmocka_unit_test(poller_multi_lens_test),
         cmocka_unit_test(poller_multi_region_test),
+        cmocka_unit_test(poller_freq_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

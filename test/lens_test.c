@@ -10,19 +10,20 @@
 // utils
 // -----------------------------------------------------------------------------
 
-bool lens_count_cb(void *ctx, struct optics_lens *lens)
+enum optics_ret lens_count_cb(void *ctx, struct optics_lens *lens)
 {
     (void) lens;
 
     size_t *counter = ctx;
     *counter += 1;
-    return true;
+    return optics_ok;
 }
 
 ssize_t lens_count(struct optics *optics)
 {
     size_t counter = 0;
-    if (optics_foreach_lens(optics, &counter, lens_count_cb) < 0) return -1;
+    if (optics_foreach_lens(optics, &counter, lens_count_cb) == optics_err)
+        return -1;
     return counter;
 }
 

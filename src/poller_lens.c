@@ -16,6 +16,7 @@ static void poller_poll_counter(struct poller_poll_ctx *ctx, struct optics_lens 
         return;
     }
 
+    value /= (int64_t) ctx->elapsed;
     poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value);
 }
 
@@ -56,7 +57,7 @@ static void poller_poll_dist(struct poller_poll_ctx *ctx, struct optics_lens *le
     size_t old;
 
     old = key_push(ctx->key, "count");
-    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value.n);
+    poller_backend_record(ctx->poller, ctx->ts, ctx->key->buffer, value.n / ctx->elapsed);
     key_pop(ctx->key, old);
 
     old = key_push(ctx->key, "p50");

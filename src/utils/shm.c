@@ -27,10 +27,10 @@ int shm_foreach(void *ctx, shm_foreach_cb_t cb)
         if (memcmp(entry->d_name, shm_prefix, shm_prefix_len))
             continue;
 
-        int ret = cb(ctx, entry->d_name + shm_prefix_len);
-        if (ret <= 0) return ret;
+        enum shm_ret ret = cb(ctx, entry->d_name + shm_prefix_len);
+        if (ret != shm_ok) return ret;
     }
 
     closedir(dir);
-    return 1;
+    return shm_ok;
 }

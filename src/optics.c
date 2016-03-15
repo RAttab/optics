@@ -10,6 +10,7 @@
 #include "utils/lock.h"
 #include "utils/rng.h"
 #include "utils/shm.h"
+#include "utils/time.h"
 
 #include <assert.h>
 #include <string.h>
@@ -63,7 +64,9 @@ struct optics_lens
 struct optics_packed optics_header
 {
     atomic_size_t epoch;
-    atomic_off_t head;
+    optics_ts_t epoch_last_inc;
+
+    atomic_off_t lens_head;
 
     char prefix[optics_name_max_len];
 };
@@ -82,7 +85,7 @@ struct optics
 // open/close
 // -----------------------------------------------------------------------------
 
-struct optics * optics_create(const char *name)
+struct optics * optics_create_at(const char *name, optics_ts_t now)
 {
     struct optics *optics = calloc(1, sizeof(*optics));
 
@@ -92,6 +95,7 @@ struct optics * optics_create(const char *name)
     if (!optics->header) goto fail_header;
 
     if (!optics_set_prefix(optics, name)) goto fail_prefix;
+    optics->header->epoch_last_inc = now;
 
     return optics;
 
@@ -102,6 +106,11 @@ struct optics * optics_create(const char *name)
   fail_region:
     free(optics);
     return NULL;
+}
+
+struct optics * optics_create(const char *name)
+{
+    return optics_create_at(name, clock_wall());
 }
 
 struct optics * optics_open(const char *name)
@@ -184,6 +193,15 @@ optics_epoch_t optics_epoch_inc(struct optics *optics)
     return atomic_fetch_add_explicit(&optics->header->epoch, 1, memory_order_release) & 1;
 }
 
+optics_epoch_t optics_epoch_inc_at(
+        struct optics *optics, optics_ts_t now, optics_ts_t *last_inc)
+{
+    *last_inc = optics->header->epoch_last_inc;
+    optics->header->epoch_last_inc = now;
+
+    return optics_epoch_inc(optics);
+}
+
 
 // -----------------------------------------------------------------------------
 // list
@@ -192,12 +210,12 @@ optics_epoch_t optics_epoch_inc(struct optics *optics)
 static bool
 optics_push_lens(struct optics *optics, struct lens *lens)
 {
-    optics_off_t old = atomic_load(&optics->header->head);
+    optics_off_t old = atomic_load(&optics->header->lens_head);
 
     do {
         lens_set_next(lens, old);
     } while (!atomic_compare_exchange_weak_explicit(
-                    &optics->header->head, &old, lens_off(lens),
+                    &optics->header->lens_head, &old, lens_off(lens),
                     memory_order_release, memory_order_relaxed));
 
     return true;
@@ -211,9 +229,11 @@ optics_remove_lens(struct optics *optics, struct lens *lens)
     return true;
 }
 
-int optics_foreach_lens(struct optics *optics, void *ctx, optics_foreach_t cb)
+enum optics_ret optics_foreach_lens(struct optics *optics, void *ctx, optics_foreach_t cb)
 {
-    optics_off_t off = atomic_load_explicit(&optics->header->head, memory_order_acquire);
+    optics_off_t off = atomic_load_explicit(
+            &optics->header->lens_head, memory_order_acquire);
+
     while (off) {
 
         struct lens *lens = lens_ptr(&optics->region, off);
@@ -221,13 +241,15 @@ int optics_foreach_lens(struct optics *optics, void *ctx, optics_foreach_t cb)
 
         if (!lens_is_dead(lens)) {
             struct optics_lens ol = { .optics = optics, .lens = lens };
-            if (!cb(ctx, &ol)) return 0;
+
+            enum optics_ret ret = cb(ctx, &ol);
+            if (ret != optics_ok) return ret;
         }
 
         off = lens_next(lens);
     }
 
-    return 1;
+    return optics_ok;
 }
 
 

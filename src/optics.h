@@ -20,6 +20,7 @@
 
 enum { optics_name_max_len = 512 };
 
+typedef uint64_t optics_ts_t;
 
 // -----------------------------------------------------------------------------
 // optics
@@ -29,6 +30,7 @@ struct optics;
 
 struct optics * optics_open(const char *name);
 struct optics * optics_create(const char *name);
+struct optics * optics_create_at(const char *name, optics_ts_t now);
 void optics_close(struct optics *);
 bool optics_unlink(const char *name);
 bool optics_unlink_all();
@@ -39,6 +41,8 @@ bool optics_set_prefix(struct optics *, const char *prefix);
 typedef size_t optics_epoch_t;
 optics_epoch_t optics_epoch(struct optics *optics);
 optics_epoch_t optics_epoch_inc(struct optics *optics);
+optics_epoch_t optics_epoch_inc_at(
+        struct optics *optics, optics_ts_t now, optics_ts_t *last_inc);
 
 
 // -----------------------------------------------------------------------------
@@ -56,9 +60,10 @@ enum optics_lens_type
 
 enum optics_ret
 {
-    optics_ok,
-    optics_err,
-    optics_busy,
+    optics_ok = 0,
+    optics_err = -1,
+    optics_busy = 1,
+    optics_break = 2,
 };
 
 struct optics_lens * optics_lens_get(struct optics *, const char *name);
@@ -67,8 +72,8 @@ const char * optics_lens_name(struct optics_lens *);
 void optics_lens_close(struct optics_lens *);
 bool optics_lens_free(struct optics_lens *);
 
-typedef bool (*optics_foreach_t) (void *ctx, struct optics_lens *lens);
-int optics_foreach_lens(struct optics *, void *ctx, optics_foreach_t cb);
+typedef enum optics_ret (*optics_foreach_t) (void *ctx, struct optics_lens *lens);
+enum optics_ret optics_foreach_lens(struct optics *, void *ctx, optics_foreach_t cb);
 
 
 // -----------------------------------------------------------------------------

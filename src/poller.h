@@ -25,7 +25,7 @@ bool optics_poller_backend(
         struct optics_poller *, void *ctx, optics_backend_cb_t cb, optics_backend_free_t free);
 
 bool optics_poller_poll(struct optics_poller *poller);
-bool optics_poller_poll_at(struct optics_poller *poller, time_t ts);
+bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts);
 
 
 // -----------------------------------------------------------------------------
