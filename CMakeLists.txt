@@ -86,7 +86,7 @@ function(optics_exec name)
     target_link_libraries(${name} optics)
 endfunction()
 
-# optics_exec(optics)
+optics_exec(opticsd)
 
 
 #------------------------------------------------------------------------------#
