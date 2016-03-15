@@ -29,6 +29,16 @@ bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts);
 
 
 // -----------------------------------------------------------------------------
+// thread
+// -----------------------------------------------------------------------------
+
+struct optics_thread;
+
+struct optics_thread * optics_thread_start(struct optics_poller *poller, optics_ts_t freq);
+bool optics_thread_stop(struct optics_thread *thread);
+
+
+// -----------------------------------------------------------------------------
 // backends
 // -----------------------------------------------------------------------------
 
