@@ -6,11 +6,7 @@
 */
 
 #include "bench.h"
-
 #include "utils/time.h"
-#include "utils/lock.h"
-#include "utils/thread.h"
-
 
 // -----------------------------------------------------------------------------
 // harness bench
@@ -29,10 +25,8 @@ void harness_bench_st(optics_unused void **state)
     optics_bench_st("harness_bench_st", run_harness_bench, NULL);
 }
 
-void harness_bench_mt(void **state)
+void harness_bench_mt(optics_unused void **state)
 {
-    (void) state;
-
     optics_bench_mt("harness_bench_mt", run_harness_bench, NULL);
 }
 
