@@ -8,6 +8,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 #include <sys/types.h>
@@ -45,38 +46,29 @@ bool carbon_connect(struct carbon *carbon)
         return false;
     }
 
-    struct addrinfo *addr = head;
-    while (addr) {
+    for (struct addrinfo *addr = head; addr; addr = addr->ai_next) {
+
         carbon->fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-        if (carbon->fd == -1) {
-            optics_warn_errno("unable to create carbon socket for host '%s:%s'",
-                    carbon->host, carbon->port);
+        if (carbon->fd == -1) continue;
 
-            addr = addr->ai_next;
-            continue;
-        }
+        if (!connect(carbon->fd, addr->ai_addr, addr->ai_addrlen))
+            break;
 
-        int ret = connect(carbon->fd, addr->ai_addr, addr->ai_addrlen);
-        if (ret == 1) {
-            optics_warn_errno("unable to connect to carbon host '%s:%s'",
-                    carbon->host, carbon->port);
-
-            close(carbon->fd);
-            carbon->fd = -1;
-
-            addr = addr->ai_next;
-            continue;
-        }
-
-        break;
+        close(carbon->fd);
+        carbon->fd = -1;
     }
 
     freeaddrinfo(head);
-    return carbon->fd > 0;
+
+    if (carbon->fd > 0) return true;
+
+    optics_warn_errno("unable to connect carbon socket for host '%s:%s'",
+            carbon->host, carbon->port);
+    return false;
 }
 
 static void carbon_send(
-        struct carbon *carbon, const char *data, size_t len, uint64_t ts)
+        struct carbon *carbon, const char *data, size_t len, optics_ts_t ts)
 {
     if (carbon->fd <= 0) {
         if (carbon->last_attempt == ts) return;
@@ -84,7 +76,7 @@ static void carbon_send(
         if (!carbon_connect(carbon)) return;
     }
 
-    ssize_t ret = send(carbon->fd, data, len, 0);
+    ssize_t ret = send(carbon->fd, data, len, MSG_NOSIGNAL);
     if (ret > 0 && (size_t) ret == len) return;
     if (ret >= 0) {
         optics_warn("unexpected partial message send: %lu '%s'", len, data);
@@ -94,6 +86,7 @@ static void carbon_send(
     optics_warn_errno("unable to send to carbon host '%s:%s'",
             carbon->host, carbon->port);
     close(carbon->fd);
+    carbon->fd = -1;
 }
 
 
@@ -101,18 +94,18 @@ static void carbon_send(
 // callbacks
 // -----------------------------------------------------------------------------
 
-static void carbon_dump(void *ctx, uint64_t ts, const char *key, double value)
+static void carbon_dump(void *ctx, optics_ts_t ts, const char *key, double value)
 {
     struct carbon *carbon = ctx;
 
     char buffer[512];
-    int ret = snprintf(buffer, sizeof(buffer), "%s %g %lu", key, value, ts);
+    int ret = snprintf(buffer, sizeof(buffer), "%s %g %lu\n", key, value, ts);
     if (ret < 0 || (size_t) ret >= sizeof(buffer)) {
         optics_warn("skipping overly long carbon message: '%s'", buffer);
         return;
     }
 
-    carbon_send(carbon, buffer, sizeof(buffer), ts);
+    carbon_send(carbon, buffer, ret, ts);
 }
 
 static void carbon_free(void *ctx)
@@ -131,8 +124,8 @@ static void carbon_free(void *ctx)
 void optics_dump_carbon(struct optics_poller *poller, const char *host, const char *port)
 {
     struct carbon *carbon = calloc(1, sizeof(struct carbon));
-    carbon->host = host;
-    carbon->port = port;
+    carbon->host = strdup(host);
+    carbon->port = strdup(port);
 
     optics_poller_backend(poller, carbon, &carbon_dump, &carbon_free);
 }

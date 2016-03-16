@@ -12,7 +12,7 @@
 // callbacks
 // -----------------------------------------------------------------------------
 
-static void stdout_dump(void *ctx, uint64_t ts, const char *key, double value)
+static void stdout_dump(void *ctx, optics_ts_t ts, const char *key, double value)
 {
     (void) ctx;
 
