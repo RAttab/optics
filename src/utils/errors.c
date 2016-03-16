@@ -33,9 +33,9 @@ size_t optics_strerror(struct optics_error *err, char *dest, size_t len)
                 strerror(err->errno_), err->errno_);
     }
 
-    if (optics_errno.backtrace_len > 0) {
-        char **symbols = backtrace_symbols(optics_errno.backtrace, optics_errno.backtrace_len);
-        for (int j = 0; j < optics_errno.backtrace_len; ++j) {
+    if (err->backtrace_len > 0) {
+        char **symbols = backtrace_symbols(err->backtrace, err->backtrace_len);
+        for (int j = 0; j < err->backtrace_len; ++j) {
             i += snprintf(dest + i, len - i, "  {%d} %s\n", j, symbols[j]);
         }
     }
@@ -105,7 +105,7 @@ void optics_vwarn(const char *file, int line, const char *fmt, ...)
     va_list args;
     va_start(args, fmt);
 
-    struct optics_error err = { .errno_ = 0, .file = file, .line = line };
+    struct optics_error err = { .file = file, .line = line };
     (void) vsnprintf(err.msg, optics_err_msg_cap, fmt, args);
     optics_backtrace(&err);
 
@@ -118,7 +118,7 @@ void optics_vwarn_errno(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
 
     struct optics_error err = { .errno_ = errno, .file = file, .line = line };
-    (void) vsnprintf(optics_errno.msg, optics_err_msg_cap, fmt, args);
+    (void) vsnprintf(err.msg, optics_err_msg_cap, fmt, args);
     optics_backtrace(&err);
 
     optics_perror(&err);
