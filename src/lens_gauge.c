@@ -35,9 +35,9 @@ union lens_gauge_convert
 // -----------------------------------------------------------------------------
 
 static struct lens *
-lens_gauge_alloc(struct region *region, const char *name)
+lens_gauge_alloc(struct optics *optics, const char *name)
 {
-    return lens_alloc(region, optics_gauge, sizeof(struct lens_gauge), name);
+    return lens_alloc(optics, optics_gauge, sizeof(struct lens_gauge), name);
 }
 
 static bool

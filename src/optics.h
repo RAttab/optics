@@ -18,7 +18,7 @@
 // config
 // -----------------------------------------------------------------------------
 
-enum { optics_name_max_len = 512 };
+enum { optics_name_max_len = 128 };
 
 typedef uint64_t optics_ts_t;
 

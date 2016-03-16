@@ -99,6 +99,112 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
+// grow st
+// -----------------------------------------------------------------------------
+
+optics_test_head(region_grow_st_test)
+{
+    struct optics *optics = optics_create(test_name);
+
+    enum { n = 1000 };
+    struct optics_lens *lens[n];
+
+    for (size_t attempt = 0; attempt < 5; ++attempt) {
+
+        for (size_t i = 0; i < n; ++i) {
+            char key[128];
+            snprintf(key, sizeof(key), "key-%lu", i);
+
+            lens[i] = optics_dist_alloc(optics, key);
+            if (!lens[i]) optics_abort();
+        }
+
+        for (size_t i = 0; i < n; ++i)
+            assert_true(optics_dist_record(lens[i], i));
+
+        optics_epoch_t epoch = optics_epoch(optics);
+        for (size_t i = 0; i < n; ++i) {
+            struct optics_dist value;
+            assert_int_equal(optics_dist_read(lens[i], epoch, &value), optics_ok);
+            assert_int_equal(value.n, 1);
+            assert_int_equal(value.max, i);
+        }
+
+        for (size_t i = 0; i < n; ++i)
+            assert_true(optics_lens_free(lens[i]));
+
+        optics_epoch_inc(optics);
+    }
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
+// grow mt
+// -----------------------------------------------------------------------------
+
+struct grow_test
+{
+    struct optics *optics;
+
+    size_t workers;
+    atomic_size_t done;
+};
+
+void run_grow_test(size_t id, void *ctx)
+{
+    struct grow_test *data = ctx;
+
+    if (!id) {
+        size_t done = 0;
+        do {
+            optics_epoch_inc(data->optics);
+            done = atomic_load_explicit(&data->done, memory_order_acquire);
+        } while (done < (data->workers - 1));
+
+        for (size_t i = 0; i < 2; ++i)
+            optics_epoch_inc(data->optics);
+    }
+
+    else {
+        enum { n = 1000 };
+        struct optics_lens *lens[n];
+
+        for (size_t run = 0; run < 5; ++run) {
+            optics_log("test.attempt", "%lu", run);
+
+            for (size_t i = 0; i < n; ++i) {
+                char key[128];
+                snprintf(key, sizeof(key), "key-%lu-%lu", id, i);
+
+                lens[i] = optics_dist_alloc(data->optics, key);
+                if (!lens[i]) optics_abort();
+            }
+
+            for (size_t i = 0; i < n; ++i)
+                if (!optics_dist_record(lens[i], i)) optics_abort();
+
+            for (size_t i = 0; i < n; ++i)
+                if (!optics_lens_free(lens[i])) optics_abort();
+        }
+
+        atomic_fetch_add_explicit(&data->done, 1, memory_order_release);
+    }
+}
+
+optics_test_head(region_grow_mt_test)
+{
+    struct optics *optics = optics_create(test_name);
+
+    struct grow_test data = { .optics = optics, .workers = cpus() };
+    run_threads(run_grow_test, &data, data.workers);
+
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
 // setup
 // -----------------------------------------------------------------------------
 
@@ -109,6 +215,8 @@ int main(void)
         cmocka_unit_test(region_unlink_test),
         cmocka_unit_test(region_prefix_test),
         cmocka_unit_test(region_epoch_test),
+        cmocka_unit_test(region_grow_st_test),
+        cmocka_unit_test(region_grow_mt_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

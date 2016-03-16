@@ -19,9 +19,9 @@ struct optics_packed lens_counter
 // -----------------------------------------------------------------------------
 
 static struct lens *
-lens_counter_alloc(struct region *region, const char *name)
+lens_counter_alloc(struct optics *optics, const char *name)
 {
-    return lens_alloc(region, optics_counter, sizeof(struct lens_counter), name);
+    return lens_alloc(optics, optics_counter, sizeof(struct lens_counter), name);
 }
 
 static bool

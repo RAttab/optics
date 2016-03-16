@@ -35,9 +35,9 @@ struct optics_packed lens_dist
 
 
 static struct lens *
-lens_dist_alloc(struct region *region, const char *name)
+lens_dist_alloc(struct optics *optics, const char *name)
 {
-    return lens_alloc(region, optics_dist, sizeof(struct lens_dist), name);
+    return lens_alloc(optics, optics_dist, sizeof(struct lens_dist), name);
 }
 
 static bool

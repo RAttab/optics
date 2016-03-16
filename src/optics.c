@@ -11,6 +11,7 @@
 #include "utils/rng.h"
 #include "utils/shm.h"
 #include "utils/time.h"
+#include "utils/bits.h"
 
 #include <assert.h>
 #include <string.h>
@@ -39,7 +40,6 @@ static_assert(
 typedef size_t optics_epoch_t; // 0 - 1 value.
 typedef atomic_size_t atomic_optics_epoch_t;
 
-static const size_t cache_line_len = 64UL;
 static const size_t page_len = 4096UL;
 
 
@@ -53,7 +53,13 @@ struct optics_lens
     struct lens *lens;
 };
 
+static void * optics_ptr(struct optics *optics, optics_off_t off, size_t len);
+static optics_off_t optics_alloc(struct optics *optics, size_t len);
+static void optics_free(struct optics *optics, optics_off_t off, size_t len);
+static bool optics_defer_free(struct optics *optics, optics_off_t off, size_t len);
+
 #include "region.c"
+#include "alloc.c"
 #include "lens.c"
 
 
@@ -61,14 +67,25 @@ struct optics_lens
 // struct
 // -----------------------------------------------------------------------------
 
+struct optics_packed optics_defer
+{
+    optics_off_t off;
+    size_t len;
+
+    optics_off_t next;
+};
+
 struct optics_packed optics_header
 {
     atomic_size_t epoch;
     optics_ts_t epoch_last_inc;
+    optics_off_t epoch_defers[2];
 
     atomic_off_t lens_head;
 
     char prefix[optics_name_max_len];
+
+    struct alloc alloc;
 };
 
 struct optics
@@ -95,6 +112,7 @@ struct optics * optics_create_at(const char *name, optics_ts_t now)
     if (!optics->header) goto fail_header;
 
     if (!optics_set_prefix(optics, name)) goto fail_prefix;
+    alloc_init(&optics->header->alloc, sizeof(struct optics_header));
     optics->header->epoch_last_inc = now;
 
     return optics;
@@ -176,6 +194,86 @@ bool optics_set_prefix(struct optics *optics, const char *prefix)
 
 
 // -----------------------------------------------------------------------------
+// alloc
+// -----------------------------------------------------------------------------
+
+static void * optics_ptr(struct optics *optics, optics_off_t off, size_t len)
+{
+    return region_ptr(&optics->region, off, len);
+}
+
+static optics_off_t optics_alloc(struct optics *optics, size_t len)
+{
+    optics_off_t off;
+
+    {
+        slock_lock(&optics->lock);
+
+        off = alloc_alloc(&optics->header->alloc, &optics->region, len);
+
+        slock_unlock(&optics->lock);
+    }
+
+    return off;
+}
+
+static void optics_free(struct optics *optics, optics_off_t off, size_t len)
+{
+    slock_lock(&optics->lock);
+
+    alloc_free(&optics->header->alloc, &optics->region, off, len);
+
+    slock_unlock(&optics->lock);
+}
+
+static bool optics_defer_free(struct optics *optics, optics_off_t off, size_t len)
+{
+
+    struct optics_defer *pnode;
+    optics_off_t node = optics_alloc(optics, sizeof(*pnode));
+    if (!node) return false;
+
+    pnode = optics_ptr(optics, node, sizeof(*pnode));
+    pnode->off = off;
+    pnode->len = len;
+
+    {
+        slock_lock(&optics->lock);
+
+        optics_epoch_t epoch = optics_epoch(optics);
+        pnode->next = optics->header->epoch_defers[epoch];
+        optics->header->epoch_defers[epoch] = node;
+
+        slock_unlock(&optics->lock);
+    }
+
+    return true;
+}
+
+static void optics_free_defered(struct optics *optics, optics_epoch_t epoch)
+{
+    optics_off_t node;
+    {
+        slock_lock(&optics->lock);
+
+        node = optics->header->epoch_defers[epoch];
+        optics->header->epoch_defers[epoch] = 0;
+
+        slock_unlock(&optics->lock);
+    }
+
+    while (node) {
+        struct optics_defer *pnode = optics_ptr(optics, node, sizeof(*pnode));
+        optics_free(optics, pnode->off, pnode->len);
+
+        optics_off_t next = pnode->next;
+        optics_free(optics, node, sizeof(*pnode));
+        node = next;
+    }
+}
+
+
+// -----------------------------------------------------------------------------
 // epoch
 // -----------------------------------------------------------------------------
 
@@ -190,6 +288,7 @@ optics_epoch_t optics_epoch(struct optics *optics)
 
 optics_epoch_t optics_epoch_inc(struct optics *optics)
 {
+    optics_free_defered(optics, optics_epoch(optics) ^ 1);
     return atomic_fetch_add_explicit(&optics->header->epoch, 1, memory_order_release) & 1;
 }
 
@@ -207,26 +306,14 @@ optics_epoch_t optics_epoch_inc_at(
 // list
 // -----------------------------------------------------------------------------
 
-static bool
-optics_push_lens(struct optics *optics, struct lens *lens)
+static void optics_push_lens(struct optics *optics, struct lens *lens)
 {
-    optics_off_t old = atomic_load(&optics->header->lens_head);
+    optics_off_t head = atomic_load_explicit(
+            &optics->header->lens_head, memory_order_relaxed);
 
-    do {
-        lens_set_next(lens, old);
-    } while (!atomic_compare_exchange_weak_explicit(
-                    &optics->header->lens_head, &old, lens_off(lens),
-                    memory_order_release, memory_order_relaxed));
-
-    return true;
-}
-
-static bool
-optics_remove_lens(struct optics *optics, struct lens *lens)
-{
-    (void) optics;
-    lens_kill(lens);
-    return true;
+    lens_set_next(optics, lens, head);
+    atomic_store_explicit(
+            &optics->header->lens_head, lens_off(lens), memory_order_release);
 }
 
 enum optics_ret optics_foreach_lens(struct optics *optics, void *ctx, optics_foreach_t cb)
@@ -236,7 +323,7 @@ enum optics_ret optics_foreach_lens(struct optics *optics, void *ctx, optics_for
 
     while (off) {
 
-        struct lens *lens = lens_ptr(&optics->region, off);
+        struct lens *lens = lens_ptr(optics, off);
         if (!lens) return -1;
 
         if (!lens_is_dead(lens)) {
@@ -268,7 +355,7 @@ struct optics_lens * optics_lens_get(struct optics *optics, const char *name)
         if (ret.ok) {
             lens = calloc(1, sizeof(*lens));
             lens->optics = optics;
-            lens->lens = lens_ptr(&optics->region, ret.value);
+            lens->lens = lens_ptr(optics, ret.value);
         }
 
         slock_unlock(&optics->lock);
@@ -289,7 +376,11 @@ optics_lens_alloc(struct optics *optics, struct lens *lens)
 
         slock_unlock(&optics->lock);
     }
-    if (!ok) return NULL;
+
+    if (!ok) {
+        optics_fail("lens '%s' already exists", lens_name(lens));
+        return NULL;
+    }
 
     struct optics_lens *ol = calloc(1, sizeof(struct optics_lens));
     ol->optics = optics;
@@ -310,13 +401,16 @@ bool optics_lens_free(struct optics_lens *l)
         slock_lock(&l->optics->lock);
 
         ok = htable_del(&l->optics->keys, lens_name(l->lens)).ok;
+        lens_kill(l->optics, l->lens);
 
         slock_unlock(&l->optics->lock);
     }
 
     if (!ok) return false;
-    if (!optics_remove_lens(l->optics, l->lens)) return false;
+
+    if (!lens_defer_free(l->optics, l->lens)) return false;
     optics_lens_close(l);
+
     return true;
 }
 
@@ -338,13 +432,13 @@ const char * optics_lens_name(struct optics_lens *l)
 
 struct optics_lens * optics_counter_alloc(struct optics *optics, const char *name)
 {
-    struct lens *counter = lens_counter_alloc(&optics->region, name);
+    struct lens *counter = lens_counter_alloc(optics, name);
     if (!counter) return NULL;
 
     struct optics_lens *lens = optics_lens_alloc(optics, counter);
     if (lens) return lens;
 
-    lens_free(&optics->region, counter);
+    lens_free(optics, counter);
     return NULL;
 }
 
@@ -366,13 +460,13 @@ optics_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *val
 
 struct optics_lens * optics_gauge_alloc(struct optics *optics, const char *name)
 {
-    struct lens *gauge = lens_gauge_alloc(&optics->region, name);
+    struct lens *gauge = lens_gauge_alloc(optics, name);
     if (!gauge) return NULL;
 
     struct optics_lens *lens = optics_lens_alloc(optics, gauge);
     if (lens) return lens;
 
-    lens_free(&optics->region, gauge);
+    lens_free(optics, gauge);
     return NULL;
 }
 
@@ -394,13 +488,13 @@ optics_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
 
 struct optics_lens * optics_dist_alloc(struct optics *optics, const char *name)
 {
-    struct lens *dist = lens_dist_alloc(&optics->region, name);
+    struct lens *dist = lens_dist_alloc(optics, name);
     if (!dist) return NULL;
 
     struct optics_lens *lens = optics_lens_alloc(optics, dist);
     if (lens) return lens;
 
-    lens_free(&optics->region, dist);
+    lens_free(optics, dist);
     return NULL;
 }
 
