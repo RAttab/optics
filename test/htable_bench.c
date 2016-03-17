@@ -61,6 +61,8 @@ void get_bench_st(optics_unused void **state)
 
         struct htable_bench data = { &ht, len, names };
         optics_bench_st(title, run_get_bench, &data);
+
+        htable_reset(&ht);
     }
 
     free(names);
@@ -82,6 +84,10 @@ void run_put_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 
     for (size_t i = 0; i < n; ++i)
         htable_put(&ht, ctx->names[i], 1);
+
+    optics_bench_stop(b);
+
+    htable_reset(&ht);
 }
 
 
@@ -108,7 +114,7 @@ void put_bench_st(optics_unused void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(get_bench_st),
+        /* cmocka_unit_test(get_bench_st), */
         cmocka_unit_test(put_bench_st),
     };
 
