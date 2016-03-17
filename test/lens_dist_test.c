@@ -231,7 +231,7 @@ size_t epoch_test_read_lens(struct epoch_test *test)
 void run_epoch_test(size_t id, void *ctx)
 {
     struct epoch_test *test = ctx;
-    enum { iterations = 1000 * 1000 };
+    enum { iterations = 100 * 1000 };
 
     if (id) {
         for (size_t i = 0; i < iterations; ++i)

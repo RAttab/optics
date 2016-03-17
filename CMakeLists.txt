@@ -110,14 +110,10 @@ function(optics_cmocka_test name)
         add_test(${name}_test bin/${name}_test)
         set_tests_properties(${name}_test PROPERTIES LABELS "test")
 
-        # \todo valgrind is SUPER slow when we use large shm regions so it's
-        # currently impractical. Should be re-enabled once we have resizing
-        # regions.
-        #
-        # if(VALGRIND_EXEC)
-        #     add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS} bin/${name}_test)
-        #     set_tests_properties(${name}_valgrind PROPERTIES LABELS "valgrind")
-        # endif()
+        if(VALGRIND_EXEC)
+            add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS} bin/${name}_test)
+            set_tests_properties(${name}_valgrind PROPERTIES LABELS "valgrind")
+        endif()
     endif()
 endfunction()
 
