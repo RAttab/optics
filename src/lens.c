@@ -58,30 +58,32 @@ lens_alloc(
     return lens;
 }
 
+static size_t lens_total_len(struct lens *lens)
+{
+    return sizeof(*lens) + lens->name_len + lens->lens_len;
+}
+
 static void lens_free(struct optics *optics, struct lens *lens)
 {
-    size_t total_len = sizeof(struct lens) + lens->name_len + lens->lens_len;
-    optics_free(optics, lens->off, total_len);
+    optics_free(optics, lens->off, lens_total_len(lens));
 }
 
 static bool lens_defer_free(struct optics *optics, struct lens *lens)
 {
-    size_t total_len = sizeof(struct lens) + lens->name_len + lens->lens_len;
-    return optics_defer_free(optics, lens->off, total_len);
+    return optics_defer_free(optics, lens->off, lens_total_len(lens));
 }
 
 static struct lens *lens_ptr(struct optics *optics, optics_off_t off)
 {
-    struct lens *lens = optics_ptr(optics, off, sizeof(struct lens));
-    if (!lens) return NULL;
+    struct lens *lens = optics_ptr(optics, off, sizeof(*lens));
+    if (optics_unlikely(!lens)) return NULL;
 
-    size_t total_len = sizeof(struct lens) + lens->name_len + lens->lens_len;
-    return optics_ptr(optics, off, total_len);
+    return optics_ptr(optics, off, lens_total_len(lens));
 }
 
 static void * lens_sub_ptr(struct lens *lens, enum optics_lens_type type)
 {
-    if (lens->type != type) {
+    if (optics_unlikely(lens->type != type)) {
         optics_fail("invalid lens type: %d != %d", lens->type, type);
         return NULL;
     }

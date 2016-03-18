@@ -47,18 +47,20 @@ lens_dist_record(struct optics_lens* lens, optics_epoch_t epoch, double value)
     if (!dist_head) return false;
 
     struct lens_dist_epoch *dist = &dist_head->epochs[epoch];
-    slock_lock(&dist->lock);
+    {
+        slock_lock(&dist->lock);
 
-    size_t i = dist->n;
-    if (i >= dist_reservoir_len)
-        i = rng_gen_range(rng_global(), 0, dist->n);
-    if (i < dist_reservoir_len)
-        dist->reservoir[i] = value;
+        size_t i = dist->n;
+        if (i >= dist_reservoir_len)
+            i = rng_gen_range(rng_global(), 0, dist->n);
+        if (i < dist_reservoir_len)
+            dist->reservoir[i] = value;
 
-    dist->n++;
-    if (value > dist->max) dist->max = value;
+        dist->n++;
+        if (value > dist->max) dist->max = value;
 
-    slock_unlock(&dist->lock);
+        slock_unlock(&dist->lock);
+    }
     return true;
 }
 
