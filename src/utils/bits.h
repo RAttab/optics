@@ -42,6 +42,12 @@ inline size_t ceil_div(size_t n, size_t d)
     return n ? ((n - 1) / d) + 1 : 0;
 }
 
+inline size_t align(size_t n, size_t align)
+{
+    return ceil_div(n, align) * align;
+}
+
+
 // -----------------------------------------------------------------------------
 // bitfields
 // -----------------------------------------------------------------------------

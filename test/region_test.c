@@ -99,10 +99,21 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
-// grow st
+// alloc st
 // -----------------------------------------------------------------------------
 
-optics_test_head(region_grow_st_test)
+enum optics_ret check_lens_cb(void *ctx, struct optics_lens *lens)
+{
+    struct optics *optics = ctx;
+
+    struct optics_dist dist;
+    optics_dist_read(lens, optics_epoch(optics), &dist);
+    optics_dist_record(lens, 1);
+
+    return optics_ok;
+}
+
+optics_test_head(region_alloc_st_test)
 {
     struct optics *optics = optics_create(test_name);
 
@@ -130,6 +141,8 @@ optics_test_head(region_grow_st_test)
             assert_int_equal(value.max, i);
         }
 
+        assert_int_equal(optics_foreach_lens(optics, optics, check_lens_cb), optics_ok);
+
         for (size_t i = 0; i < n; ++i)
             assert_true(optics_lens_free(lens[i]));
 
@@ -140,10 +153,10 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
-// grow mt
+// alloc mt
 // -----------------------------------------------------------------------------
 
-struct grow_test
+struct alloc_test
 {
     struct optics *optics;
 
@@ -151,9 +164,9 @@ struct grow_test
     atomic_size_t done;
 };
 
-void run_grow_test(size_t id, void *ctx)
+void run_alloc_test(size_t id, void *ctx)
 {
-    struct grow_test *data = ctx;
+    struct alloc_test *data = ctx;
 
     if (!id) {
         size_t done = 0;
@@ -167,11 +180,10 @@ void run_grow_test(size_t id, void *ctx)
     }
 
     else {
-        enum { n = 1000 };
+        enum { n = 100 };
         struct optics_lens *lens[n];
 
-        for (size_t run = 0; run < 5; ++run) {
-            optics_log("test.attempt", "%lu", run);
+        for (size_t run = 0; run < 100; ++run) {
 
             for (size_t i = 0; i < n; ++i) {
                 char key[128];
@@ -181,8 +193,7 @@ void run_grow_test(size_t id, void *ctx)
                 if (!lens[i]) optics_abort();
             }
 
-            for (size_t i = 0; i < n; ++i)
-                if (!optics_dist_record(lens[i], i)) optics_abort();
+            optics_foreach_lens(data->optics, data->optics, check_lens_cb);
 
             for (size_t i = 0; i < n; ++i)
                 if (!optics_lens_free(lens[i])) optics_abort();
@@ -192,12 +203,12 @@ void run_grow_test(size_t id, void *ctx)
     }
 }
 
-optics_test_head(region_grow_mt_test)
+optics_test_head(region_alloc_mt_test)
 {
     struct optics *optics = optics_create(test_name);
 
-    struct grow_test data = { .optics = optics, .workers = cpus() };
-    run_threads(run_grow_test, &data, data.workers);
+    struct alloc_test data = { .optics = optics, .workers = cpus() };
+    run_threads(run_alloc_test, &data, data.workers);
 
     optics_close(optics);
 }
@@ -215,8 +226,8 @@ int main(void)
         cmocka_unit_test(region_unlink_test),
         cmocka_unit_test(region_prefix_test),
         cmocka_unit_test(region_epoch_test),
-        cmocka_unit_test(region_grow_st_test),
-        cmocka_unit_test(region_grow_mt_test),
+        cmocka_unit_test(region_alloc_st_test),
+        cmocka_unit_test(region_alloc_mt_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

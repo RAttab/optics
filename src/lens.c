@@ -18,7 +18,6 @@ struct optics_packed lens
 
     atomic_off_t next;
     optics_off_t prev;
-    atomic_uint_fast8_t dead;
 };
 
 
@@ -111,36 +110,43 @@ static const char * lens_name(struct lens *lens)
     return (const char *) (((uint8_t *) lens) + offset);
 }
 
+static optics_off_t lens_next(struct lens *lens)
+{
+    // Synchronization for nodes is done while reading the head in
+    // optics. Traversing the list doesn't require any synchronization since
+    // deletion is done using the epoch mechanism which makes reading a stale
+    // next pointer perfectly safe.
+    return atomic_load_explicit(&lens->next, memory_order_relaxed);
+}
+
+// Should be called while holding the optics->lock which makes manipulating the
+// prev pointers safe.
 static void lens_set_next(struct optics *optics, struct lens *lens, optics_off_t next)
 {
     atomic_init(&lens->next, next);
     if (!next) return;
 
+    struct lens* next_node = lens_ptr(optics, next);
+    assert(!next_node->prev);
     lens_ptr(optics, next)->prev = lens->off;
 }
 
-static optics_off_t lens_next(struct lens *lens)
-{
-    return atomic_load(&lens->next);
-}
-
-static bool lens_is_dead(struct lens *lens)
-{
-    return atomic_load(&lens->dead);
-}
-
+// Should be called while holding the optics->lock which makes manipulating the
+// prev pointers safe. See lens_next for details on memory ordering.
 static void lens_kill(struct optics *optics, struct lens *lens)
 {
-    atomic_store_explicit(&lens->dead, true, memory_order_release);
-
     optics_off_t next_off = atomic_load(&lens->next);
 
-    if (next_off)
-        lens_ptr(optics, next_off)->prev = lens->prev;
+    if (next_off) {
+        struct lens *next = lens_ptr(optics, next_off);
+        assert(next->prev == lens->off);
+        next->prev = lens->prev;
+    }
 
     if (lens->prev) {
         struct lens *prev = lens_ptr(optics, lens->prev);
-        atomic_store(&prev->next, next_off);
+        assert(prev->next == lens->off);
+        atomic_store_explicit(&prev->next, next_off, memory_order_relaxed);
     }
 }
 

@@ -3,14 +3,6 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
-
-// -----------------------------------------------------------------------------
-// config
-// -----------------------------------------------------------------------------
-
-static size_t region_len_default() { return 1024UL * page_len; }
-
-
 // -----------------------------------------------------------------------------
 // utils
 // -----------------------------------------------------------------------------
@@ -44,8 +36,8 @@ static ssize_t region_file_len(int fd)
 
 struct region_vma
 {
-    void *map;
-    size_t len;
+    atomic_uintptr_t ptr;
+    atomic_size_t len;
 
     struct region_vma *next;
 };
@@ -55,6 +47,7 @@ struct region
     int fd;
     bool owned;
     char name[NAME_MAX];
+    struct slock lock;
 
     struct region_vma vma;
 };
@@ -78,7 +71,7 @@ static bool region_unlink(const char *name)
     return true;
 }
 
-static bool region_create(struct region *region, const char *name)
+static bool region_create(struct region *region, const char *name, size_t len)
 {
     // Wipe any leftover regions if exists.
     (void) region_unlink(name);
@@ -95,25 +88,28 @@ static bool region_create(struct region *region, const char *name)
         goto fail_open;
     }
 
-    region->vma.len = region_len_default();
+    size_t vma_len = ceil_div(len, page_len) * page_len;
 
-    int ret = ftruncate(region->fd, region->vma.len);
+    int ret = ftruncate(region->fd, vma_len);
     if (ret == -1) {
-        optics_fail_errno("unable to resize region '%s' to '%lu'", name, region->vma.len);
+        optics_fail_errno("unable to resize region '%s' to '%lu'", name, vma_len);
         goto fail_truncate;
     }
 
     int prot = PROT_READ | PROT_WRITE;
     int flags = MAP_SHARED;
-    region->vma.map = mmap(0, region->vma.len, prot, flags, region->fd, 0);
-    if (region->vma.map == MAP_FAILED) {
-        optics_fail_errno("unable to map region '%s' to '%lu'", name, region->vma.len);
+    void *vma_ptr = mmap(0, vma_len, prot, flags, region->fd, 0);
+    if (vma_ptr == MAP_FAILED) {
+        optics_fail_errno("unable to map region '%s' to '%lu'", name, vma_len);
         goto fail_vma;
     }
 
+    atomic_init(&region->vma.len, vma_len);
+    atomic_init(&region->vma.ptr, (uintptr_t) vma_ptr);
+
     return true;
 
-    munmap(region->vma.map, region->vma.len);
+    munmap(vma_ptr, vma_len);
 
   fail_vma:
   fail_truncate:
@@ -142,24 +138,26 @@ static bool region_open(struct region *region, const char *name)
     }
 
 
-    ssize_t len = region_file_len(region->fd);
-    if (len < 0) {
+    ssize_t vma_len = region_file_len(region->fd);
+    if (vma_len < 0) {
         optics_fail_errno("unable to query length of region '%s'", name);
         goto fail_len;
     }
-    region->vma.len = len;
 
     int prot = PROT_READ | PROT_WRITE;
     int flags = MAP_SHARED;
-    region->vma.map = mmap(0, region->vma.len, prot, flags, region->fd, 0);
-    if (region->vma.map == MAP_FAILED) {
-        optics_fail_errno("unable to map region '%s' to '%lu'", name, region->vma.len);
+    void *vma_ptr = mmap(0, vma_len, prot, flags, region->fd, 0);
+    if (vma_ptr== MAP_FAILED) {
+        optics_fail_errno("unable to map region '%s' to '%lu'", name, vma_len);
         goto fail_vma;
     }
 
+    atomic_init(&region->vma.len, vma_len);
+    atomic_init(&region->vma.ptr, (uintptr_t) vma_ptr);
+
     return true;
 
-    munmap(region->vma.map, region->vma.len);
+    munmap(vma_ptr, vma_len);
 
   fail_vma:
   fail_len:
@@ -174,11 +172,17 @@ static bool region_open(struct region *region, const char *name)
 
 static bool region_close(struct region *region)
 {
+    if (!slock_try_lock(&region->lock))
+        optics_fail("closing region with active threads");
+
     struct region_vma *node = &region->vma;
     while (node) {
-        if (munmap(node->map, node->len) == -1) {
+        void *vma_ptr = (void *) atomic_load(&node->ptr);
+        size_t vma_len = atomic_load(&node->len);
+
+        if (munmap(vma_ptr, vma_len) == -1) {
             optics_fail_errno("unable to unmap region '%s': {%p, %lu}",
-                    region->name, (void *) node->map, node->len);
+                    region->name, vma_ptr, vma_len);
             return false;
         }
 
@@ -207,21 +211,21 @@ static bool region_close(struct region *region)
 // vma
 // -----------------------------------------------------------------------------
 
-static size_t region_len(struct region *region)
+static optics_off_t region_grow(struct region *region, size_t len)
 {
-    return region->vma.len;
-}
+    len = align(len, page_len);
 
-static bool region_grow(struct region *region, size_t len)
-{
-    if (len <= region->vma.len) {
-        optics_fail("invalid grow length: %lu <= %lu", len, region->vma.len);
-        return 0;
-    }
+    slock_lock(&region->lock);
 
-    int ret = ftruncate(region->fd, len);
+    // len is only modified by grow while holding a lock. no synchronization
+    // required here.
+    size_t old_len = atomic_load_explicit(&region->vma.len, memory_order_relaxed);
+    size_t new_len = old_len + len;
+
+    int ret = ftruncate(region->fd, new_len);
     if (ret == -1) {
-        optics_fail_errno("unable to resize region '%s' to '%lu'", region->name, len);
+        optics_fail_errno("unable to resize region '%s' to %lu + %lu",
+                region->name, old_len, len);
         goto fail_trunc;
     }
 
@@ -232,33 +236,47 @@ static bool region_grow(struct region *region, size_t len)
 
     struct region_vma *old = malloc(sizeof(*old));
     *old = region->vma;
-    region->vma.len = len;
 
     int prot = PROT_READ | PROT_WRITE;
     int flags = MAP_SHARED;
-    region->vma.map = mmap(0, region->vma.len, prot, flags, region->fd, 0);
-    if (region->vma.map == MAP_FAILED) {
-        optics_fail_errno("unable to map region '%s' to '%lu'", region->name, region->vma.len);
+    void *ptr = mmap(0, new_len, prot, flags, region->fd, 0);
+    if (ptr == MAP_FAILED) {
+        optics_fail_errno("unable to map region '%s' to '%lu'", region->name, len);
         goto fail_mmap;
     }
 
     region->vma.next = old;
-    return true;
+
+    // len must be written after ptr to ensure that even if we read a new ptr
+    // and a stale len then everything we still only have access to a correct
+    // area of memory while the inverse is not true.
+    atomic_store_explicit(&region->vma.ptr, (uintptr_t) ptr, memory_order_relaxed);
+    atomic_store_explicit(&region->vma.len, new_len, memory_order_release);
+
+    slock_unlock(&region->lock);
+    return old_len;
 
   fail_mmap:
     free(old);
 
   fail_trunc:
-    return false;
+    slock_unlock(&region->lock);
+    return 0;
 }
 
+// can be called concurrently with an ongoing grow operation and must therefore
+// be synchronized with it.
 static void * region_ptr(struct region *region, optics_off_t off, size_t len)
 {
-    if (off + len > region->vma.len) {
-        optics_fail("out-of-region access in region '%s' at '%p' with len '%lu'",
-                region->name, (void *) off, len);
+    void *vma_ptr = (void *) atomic_load_explicit(&region->vma.ptr, memory_order_relaxed);
+    size_t vma_len = atomic_load_explicit(&region->vma.len, memory_order_acquire);
+
+    if (off + len > vma_len) {
+        optics_fail(
+                "out-of-region access in region '%s' at '%p' with len '%lu' and region_len '%p'",
+                region->name, (void *) off, len, (void *) vma_len);
         return NULL;
     }
 
-    return ((uint8_t *) region->vma.map) + off;
+    return ((uint8_t *) vma_ptr) + off;
 }

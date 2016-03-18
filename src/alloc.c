@@ -26,7 +26,7 @@ enum { alloc_classes = 1 + 16 + 7 };
 
 struct optics_packed alloc
 {
-    size_t off;
+    struct slock lock;
     optics_off_t classes[alloc_classes];
 };
 
@@ -73,25 +73,31 @@ static optics_off_t alloc_fill_class(
     assert(!alloc->classes[class]);
 
     size_t slab = len * (len <= alloc_mid_len ? 256 : 16);
-
-    if (alloc->off + slab > region_len(region)) {
-        if (!region_grow(region, region_len(region) * 2)) return 0;
-        assert(alloc->off + slab <= region_len(region));
-    }
+    size_t start = region_grow(region, slab);
+    if (!start) return 0;
 
     const size_t nodes = slab / len;
-    optics_off_t start = alloc->off;
     optics_off_t end = start + (nodes * len);
+    assert(nodes > 2);
 
     for (optics_off_t node = start + len; node + len < end; node += len) {
-        optics_off_t *pnode = region_ptr(region, node, sizeof(optics_off_t));
+        optics_off_t *pnode = region_ptr(region, node, sizeof(*pnode));
         if (!pnode) optics_abort();
 
         *pnode = node + len;
     }
 
-    alloc->classes[class] = start + len;
-    alloc->off += slab;
+    optics_off_t *plast = region_ptr(region, end - len, sizeof(*plast));
+    {
+        slock_lock(&alloc->lock);
+
+        *plast = alloc->classes[class];
+        alloc->classes[class] = start + len;
+
+        slock_unlock(&alloc->lock);
+    }
+
+
     return start;
 }
 
@@ -100,21 +106,25 @@ static optics_off_t alloc_fill_class(
 // alloc
 // -----------------------------------------------------------------------------
 
-void alloc_init(struct alloc *alloc, optics_off_t off)
+void alloc_init(struct alloc *alloc)
 {
     memset(alloc, 0, sizeof(*alloc));
-    alloc->off = off;
 }
 
 optics_off_t alloc_alloc(struct alloc *alloc, struct region *region, size_t len)
 {
+    slock_lock(&alloc->lock);
+
     optics_assert(len <= alloc_max_len, "alloc size too big: %lu > %lu",
             len, alloc_max_len);
 
     size_t class = alloc_class(&len);
     optics_off_t *pclass = &alloc->classes[class];
 
-    if (!*pclass) return alloc_fill_class(alloc, region, len, class);
+    if (!*pclass) {
+        slock_unlock(&alloc->lock);
+        return alloc_fill_class(alloc, region, len, class);
+    }
 
     optics_off_t off = *pclass;
     optics_off_t *pnode = region_ptr(region, off, len);
@@ -124,20 +134,26 @@ optics_off_t alloc_alloc(struct alloc *alloc, struct region *region, size_t len)
 
     *pclass = *pnode;
     memset(pnode, 0, len);
+
+    slock_unlock(&alloc->lock);
     return off;
 }
 
 void alloc_free(
         struct alloc *alloc, struct region *region, optics_off_t off, size_t len)
 {
+    slock_lock(&alloc->lock);
+
     optics_assert(len <= alloc_max_len,
             "invalid free len: off=%p, len=%lu", (void *) off, len);
 
     size_t class = alloc_class(&len);
     optics_off_t *pclass = &alloc->classes[class];
 
-    optics_off_t *pnode = region_ptr(region, off, sizeof(optics_off_t));
+    optics_off_t *pnode = region_ptr(region, off, len);
     memset(pnode, 0xFF, len);
     *pnode = *pclass;
     *pclass = off;
+
+    slock_unlock(&alloc->lock);
 }
