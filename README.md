@@ -38,3 +38,4 @@ start dumping them to its configured backends.
 ### Pre-emptive Nit-picking
 
 * Not POSIX compliant.
+* Assumes amd64.
