@@ -3,7 +3,7 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
-#include "optics.h"
+#include "optics_priv.h"
 #include "utils/compiler.h"
 #include "utils/type_pun.h"
 #include "utils/htable.h"

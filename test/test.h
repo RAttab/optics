@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "optics.h"
+#include "optics_priv.h"
 #include "poller.h"
 #include "utils/thread.h"
 #include "utils/htable.h"

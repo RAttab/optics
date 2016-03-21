@@ -3,6 +3,7 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
+#include "optics_priv.h"
 #include "poller.h"
 #include "utils/key.h"
 #include "utils/time.h"
