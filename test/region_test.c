@@ -4,6 +4,7 @@
 */
 
 #include "test.h"
+#include "utils/time.h"
 
 
 // -----------------------------------------------------------------------------
@@ -167,8 +168,14 @@ void run_alloc_test(size_t id, void *ctx)
     struct alloc_test *data = ctx;
 
     if (!id) {
-        for (size_t run = 0; run < 100; ++run) {
+        for (size_t run = 0; run < 10; ++run) {
             (void) optics_epoch_inc(data->optics);
+
+            // Without this the id == 0 thread had a tendency to finish before
+            // any other thread came up online (ie. there's nothing to do until
+            // the other threads start working).
+            nsleep(1 * 1000);
+
             if (optics_foreach_lens(data->optics, data->optics, check_lens_cb) == optics_err)
                 optics_abort();
         }

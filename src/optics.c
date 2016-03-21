@@ -41,6 +41,7 @@ typedef size_t optics_epoch_t; // 0 - 1 value.
 typedef atomic_size_t atomic_optics_epoch_t;
 
 static const size_t page_len = 4096UL;
+static const size_t cache_line_len = 64UL;;
 
 
 // -----------------------------------------------------------------------------
@@ -113,10 +114,10 @@ struct optics * optics_create_at(const char *name, optics_ts_t now)
 {
     struct optics *optics = calloc(1, sizeof(*optics));
 
-    if (!region_create(&optics->region, name, sizeof(optics->header)))
+    if (!region_create(&optics->region, name, sizeof(*optics->header)))
         goto fail_region;
 
-    optics->header = region_ptr(&optics->region, 0, sizeof(optics->header));
+    optics->header = region_ptr_unsafe(&optics->region, 0, sizeof(*optics->header));
     if (!optics->header) goto fail_header;
 
     if (!optics_set_prefix(optics, name)) goto fail_prefix;
@@ -145,7 +146,7 @@ struct optics * optics_open(const char *name)
 
     if (!region_open(&optics->region, name)) goto fail_region;
 
-    optics->header = region_ptr(&optics->region, 0, sizeof(struct optics_header));
+    optics->header = region_ptr(&optics->region, 0, sizeof(*optics->header));
     if (!optics->header) goto fail_header;
 
     return optics;
@@ -161,6 +162,10 @@ struct optics * optics_open(const char *name)
 
 void optics_close(struct optics *optics)
 {
+    optics_assert(slock_try_lock(&optics->lock),
+            "closing optics with active thread");
+
+    htable_reset(&optics->keys);
     region_close(&optics->region);
     free(optics);
 }
@@ -228,6 +233,8 @@ static bool optics_defer_free(struct optics *optics, optics_off_t off, size_t le
     if (!node) return false;
 
     pnode = optics_ptr(optics, node, sizeof(*pnode));
+    if (!pnode) return false;
+
     pnode->off = off;
     pnode->len = len;
 
@@ -254,6 +261,11 @@ static void optics_free_defered(struct optics *optics, optics_epoch_t epoch)
 
     while (node) {
         struct optics_defer *pnode = optics_ptr(optics, node, sizeof(*pnode));
+        if (!pnode) {
+            optics_warn("leaked memory during defered free: %s", optics_errno.msg);
+            break;
+        }
+
         optics_free(optics, pnode->off, pnode->len);
 
         optics_off_t next = pnode->next;

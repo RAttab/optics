@@ -3,6 +3,13 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
+
+// -----------------------------------------------------------------------------
+// config
+// -----------------------------------------------------------------------------
+
+static const size_t region_default_len = 1UL * 1024 * 1024;
+
 // -----------------------------------------------------------------------------
 // utils
 // -----------------------------------------------------------------------------
@@ -37,7 +44,7 @@ static ssize_t region_file_len(int fd)
 struct region_vma
 {
     atomic_uintptr_t ptr;
-    atomic_size_t len;
+    size_t len;
 
     struct region_vma *next;
 };
@@ -49,6 +56,8 @@ struct region
     char name[NAME_MAX];
     struct slock lock;
 
+    size_t min_pos;
+    atomic_size_t pos;
     struct region_vma vma;
 };
 
@@ -78,6 +87,7 @@ static bool region_create(struct region *region, const char *name, size_t len)
 
     memset(region, 0, sizeof(*region));
     region->owned = true;
+    region->min_pos = len;
 
     if (!region_shm_name(name, region->name, sizeof(region->name)))
         goto fail_name;
@@ -88,7 +98,8 @@ static bool region_create(struct region *region, const char *name, size_t len)
         goto fail_open;
     }
 
-    size_t vma_len = ceil_div(len, page_len) * page_len;
+    size_t vma_len = region_default_len;
+    assert(vma_len == align(vma_len, page_len));
 
     int ret = ftruncate(region->fd, vma_len);
     if (ret == -1) {
@@ -104,8 +115,9 @@ static bool region_create(struct region *region, const char *name, size_t len)
         goto fail_vma;
     }
 
-    atomic_init(&region->vma.len, vma_len);
+    region->vma.len = vma_len;
     atomic_init(&region->vma.ptr, (uintptr_t) vma_ptr);
+    atomic_init(&region->pos, align(len, cache_line_len));
 
     return true;
 
@@ -152,8 +164,9 @@ static bool region_open(struct region *region, const char *name)
         goto fail_vma;
     }
 
-    atomic_init(&region->vma.len, vma_len);
+    region->vma.len = vma_len;
     atomic_init(&region->vma.ptr, (uintptr_t) vma_ptr);
+    atomic_init(&region->pos, vma_len);
 
     return true;
 
@@ -172,13 +185,13 @@ static bool region_open(struct region *region, const char *name)
 
 static bool region_close(struct region *region)
 {
-    if (!slock_try_lock(&region->lock))
-        optics_fail("closing region with active threads");
+    optics_assert(slock_try_lock(&region->lock),
+            "closing optics with active thread");
 
     struct region_vma *node = &region->vma;
     while (node) {
         void *vma_ptr = (void *) atomic_load(&node->ptr);
-        size_t vma_len = atomic_load(&node->len);
+        size_t vma_len = node->len;
 
         if (munmap(vma_ptr, vma_len) == -1) {
             optics_fail_errno("unable to unmap region '%s': {%p, %lu}",
@@ -213,19 +226,32 @@ static bool region_close(struct region *region)
 
 static optics_off_t region_grow(struct region *region, size_t len)
 {
-    len = align(len, page_len);
+    if (!region->owned) {
+        optics_fail("unable to grow region '%s' in read-only mode", region->name);
+        return 0;
+    }
 
     slock_lock(&region->lock);
 
     // len is only modified by grow while holding a lock. no synchronization
     // required here.
-    size_t old_len = atomic_load_explicit(&region->vma.len, memory_order_relaxed);
-    size_t new_len = old_len + len;
+    size_t old_pos = atomic_load_explicit(&region->pos, memory_order_relaxed);
+    size_t new_pos = old_pos + len;
+
+    if (new_pos <= region->vma.len) {
+        // Since we're not modifying vma.ptr, we don't need to synchronize this
+        // write.
+        atomic_store_explicit(&region->pos, new_pos, memory_order_relaxed);
+        goto done;
+    }
+
+    size_t new_len = region->vma.len;
+    while (new_len <= new_pos) new_len *= 2;
 
     int ret = ftruncate(region->fd, new_len);
     if (ret == -1) {
-        optics_fail_errno("unable to resize region '%s' to %lu + %lu",
-                region->name, old_len, len);
+        optics_fail_errno("unable to resize region '%s' to '%lu' for len '%lu'",
+                region->name, new_len, len);
         goto fail_trunc;
     }
 
@@ -246,15 +272,17 @@ static optics_off_t region_grow(struct region *region, size_t len)
     }
 
     region->vma.next = old;
+    region->vma.len = new_len;
 
-    // len must be written after ptr to ensure that even if we read a new ptr
-    // and a stale len then everything we still only have access to a correct
-    // area of memory while the inverse is not true.
+    // pos must be written after ptr to ensure that even if we read a new
+    // ptr and a stale len then everything we still only have access to a
+    // correct area of memory while the inverse is not true.
     atomic_store_explicit(&region->vma.ptr, (uintptr_t) ptr, memory_order_relaxed);
-    atomic_store_explicit(&region->vma.len, new_len, memory_order_release);
+    atomic_store_explicit(&region->pos, new_pos, memory_order_release);
 
+  done:
     slock_unlock(&region->lock);
-    return old_len;
+    return old_pos;
 
   fail_mmap:
     free(old);
@@ -266,17 +294,32 @@ static optics_off_t region_grow(struct region *region, size_t len)
 
 // can be called concurrently with an ongoing grow operation and must therefore
 // be synchronized with it.
-static void * region_ptr(struct region *region, optics_off_t off, size_t len)
+static void * region_ptr_unsafe(struct region *region, optics_off_t off, size_t len)
 {
+    // pos must be read after ptr to guarantee correctness with an ongoing
+    // resize. See region_grow for more details.
     void *vma_ptr = (void *) atomic_load_explicit(&region->vma.ptr, memory_order_relaxed);
-    size_t vma_len = atomic_load_explicit(&region->vma.len, memory_order_acquire);
+    size_t max_len = atomic_load_explicit(&region->pos, memory_order_acquire);
 
-    if (off + len > vma_len) {
+    // the two checks must be distinct because if off is too large it could wrap
+    // around and be back to ok.
+    if (optics_unlikely(off > max_len || off + len > max_len)) {
         optics_fail(
                 "out-of-region access in region '%s' at '%p' with len '%lu' and region_len '%p'",
-                region->name, (void *) off, len, (void *) vma_len);
+                region->name, (void *) off, len, (void *) max_len);
         return NULL;
     }
 
     return ((uint8_t *) vma_ptr) + off;
+}
+
+static void * region_ptr(struct region *region, optics_off_t off, size_t len)
+{
+    if (optics_unlikely(off < region->min_pos)) {
+        optics_fail("accessing header in region '%s' at '%p' with len '%lu' and min_len '%p'",
+                region->name, (void *) off, len, (void *) region->min_pos);
+        return NULL;
+    }
+
+    return region_ptr_unsafe(region, off, len);
 }
