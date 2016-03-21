@@ -81,12 +81,13 @@ target_link_libraries(optics_tests optics ${CMOCKA_LIBRARIES})
 # BINS
 #------------------------------------------------------------------------------#
 
-function(optics_exec name)
-    add_executable(${name} src/${name}.c)
+function(optics_exec name dir)
+    add_executable(${name} ${dir}/${name}.c)
     target_link_libraries(${name} optics)
 endfunction()
 
-optics_exec(opticsd)
+optics_exec(opticsd src)
+optics_exec(example test)
 
 
 #------------------------------------------------------------------------------#

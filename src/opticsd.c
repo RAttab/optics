@@ -87,6 +87,7 @@ void print_usage()
             "Options:\n"
             "  --dump-stdout              Dumps metrics to stdout\n"
             "  --dump-carbon=<host:port>  Dumps metrics to the given carbon host:port\n"
+            "  --freq=<n>                 Number of seconds between each polling attempt [10]\n"
             "  -h --help                  Prints this message\n");
 }
 
