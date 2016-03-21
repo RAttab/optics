@@ -79,5 +79,6 @@ bool assert_htable_equal_impl(
         }
     }
 
+    htable_reset(&b);
     return result;
 }

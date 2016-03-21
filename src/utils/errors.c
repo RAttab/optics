@@ -38,6 +38,8 @@ size_t optics_strerror(struct optics_error *err, char *dest, size_t len)
         for (int j = 0; j < err->backtrace_len; ++j) {
             i += snprintf(dest + i, len - i, "  {%d} %s\n", j, symbols[j]);
         }
+
+        free(symbols);
     }
 
     return i;

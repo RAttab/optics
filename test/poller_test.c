@@ -217,8 +217,10 @@ optics_test_head(poller_freq_test)
     assert_true(optics_poller_poll_at(poller, ts));
     assert_htable_equal(&result, 0, make_kv("r.l", 10));
 
+    htable_reset(&result);
     optics_lens_close(lens);
     optics_close(optics);
+    optics_poller_free(poller);
 }
 optics_test_tail()
 

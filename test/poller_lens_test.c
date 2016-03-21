@@ -67,6 +67,9 @@ optics_test_head(poller_gauge_test)
         assert_htable_equal(&result, 0.0, make_kv("bleh.blah", 10.0));
     }
 
+    htable_reset(&result);
+    optics_lens_close(gauge);
+    optics_close(optics);
     optics_poller_free(poller);
 }
 optics_test_tail()
@@ -130,6 +133,9 @@ optics_test_head(poller_counter_test)
         assert_htable_equal(&result, 0.0, make_kv("bleh.blah", 6.0));
     }
 
+    htable_reset(&result);
+    optics_lens_close(counter);
+    optics_close(optics);
     optics_poller_free(poller);
 }
 optics_test_tail()
@@ -212,6 +218,9 @@ optics_test_head(poller_dist_test)
                 make_kv("bleh.blah.max", 10.0));
     }
 
+    htable_reset(&result);
+    optics_lens_close(dist);
+    optics_close(optics);
     optics_poller_free(poller);
 }
 optics_test_tail()

@@ -28,6 +28,8 @@ optics_test_head(lens_gauge_open_close_test)
         assert_non_null(lens = optics_lens_get(optics, lens_name));
         optics_lens_free(lens);
     }
+
+    optics_close(optics);
 }
 optics_test_tail()
 
@@ -55,6 +57,7 @@ optics_test_head(lens_gauge_record_read_test)
     assert_int_equal(optics_gauge_read(lens, epoch, &value), optics_ok);
     assert_float_equal(value, 2.3e-5, 1e-7);
 
+    optics_lens_close(lens);
     optics_close(optics);
 }
 optics_test_tail()

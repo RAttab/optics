@@ -22,15 +22,17 @@ int shm_foreach(void *ctx, shm_foreach_cb_t cb)
 
     // \todo: use re-entrant readdir_r
     struct dirent *entry;
+    enum shm_ret ret;
     while ((entry = readdir(dir))) {
         if (entry->d_type != DT_REG) continue;
         if (memcmp(entry->d_name, shm_prefix, shm_prefix_len))
             continue;
 
-        enum shm_ret ret = cb(ctx, entry->d_name + shm_prefix_len);
-        if (ret != shm_ok) return ret;
+        ret = cb(ctx, entry->d_name + shm_prefix_len);
+        if (ret != shm_ok) goto done;
     }
 
+  done:
     closedir(dir);
-    return shm_ok;
+    return ret;
 }

@@ -35,20 +35,25 @@ optics_test_tail()
 
 void optics_crash(void) {}
 
-// This test leaks intentionally since we're trying to re-create what happens
-// after a crash.
 optics_test_head(region_unlink_test)
 {
     assert_false(optics_unlink(test_name));
 
-    assert_non_null(optics_create(test_name));
+    struct optics *o1;
+    assert_non_null(o1 = optics_create(test_name));
 
     optics_crash();
-    assert_non_null(optics_create(test_name));
+
+    struct optics *o2;
+    assert_non_null(o2 = optics_create(test_name));
 
     optics_crash();
     assert_true(optics_unlink(test_name));
+
     assert_null(optics_open(test_name));
+
+    optics_close(o2);
+    optics_close(o1);
 }
 optics_test_tail()
 
@@ -149,6 +154,8 @@ optics_test_head(region_alloc_st_test)
 
         optics_epoch_inc(optics);
     }
+
+    optics_close(optics);
 }
 optics_test_tail()
 
