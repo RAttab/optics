@@ -9,7 +9,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+#include <assert.h>
 #include <getopt.h>
+#include <unistd.h>
+#include <stdatomic.h>
+
+
+// -----------------------------------------------------------------------------
+// sigint
+// -----------------------------------------------------------------------------
+
+static atomic_uint_fast8_t sigint = 0;
+
+void sigint_handler(int signal)
+{
+    assert(signal == SIGINT);
+    atomic_store(&sigint, true);
+}
+
+void install_sigint()
+{
+    struct sigaction sa = { .sa_handler = sigint_handler };
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        optics_fail_errno("unable to install SIGINT handler\n");
+        optics_abort();
+    }
+}
 
 
 // -----------------------------------------------------------------------------
@@ -34,11 +60,17 @@ void parse_carbon(struct optics_poller *poller, const char *args)
     free(buffer);
 }
 
-bool run_poller(struct optics_poller *poller, optics_ts_t freq)
+void run_poller(struct optics_poller *poller, optics_ts_t freq)
 {
-    while (true) {
-        optics_poller_poll(poller);
-        nsleep(freq * 1000 * 1000 * 1000);
+    if (!optics_poller_poll(poller)) optics_abort();
+
+    while (!atomic_load(&sigint)) {
+        if (usleep(freq * 1000 * 1000) == -1 && errno != EINTR) {
+            optics_fail_errno("unable to sleep for %lu seconds", freq);
+            optics_abort();
+        }
+
+        if (!optics_poller_poll(poller)) optics_abort();
     }
 }
 
@@ -67,8 +99,8 @@ int main(int argc, char **argv)
 
     while (true) {
         static struct option options[] = {
-            {"carbon", required_argument, 0, 'c'},
-            {"stdout", no_argument, 0, 's'},
+            {"dump-carbon", required_argument, 0, 'c'},
+            {"dump-stdout", no_argument, 0, 's'},
             {"freq", required_argument, 0, 'f'},
             {"help", no_argument, 0, 'h'},
             {0}
@@ -110,5 +142,8 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    return run_poller(poller, freq) ? EXIT_SUCCESS : EXIT_FAILURE;
+    install_sigint();
+    run_poller(poller, freq);
+
+    return EXIT_SUCCESS;
 }
