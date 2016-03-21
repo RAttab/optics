@@ -159,9 +159,7 @@ optics_test_tail()
 struct alloc_test
 {
     struct optics *optics;
-
-    size_t workers;
-    atomic_size_t done;
+    atomic_uint_fast8_t done;
 };
 
 void run_alloc_test(size_t id, void *ctx)
@@ -169,22 +167,19 @@ void run_alloc_test(size_t id, void *ctx)
     struct alloc_test *data = ctx;
 
     if (!id) {
-        size_t done = 0;
-        do {
-            optics_epoch_inc(data->optics);
-            done = atomic_load_explicit(&data->done, memory_order_acquire);
-        } while (done < (data->workers - 1));
+        for (size_t run = 0; run < 100; ++run) {
+            (void) optics_epoch_inc(data->optics);
+            if (optics_foreach_lens(data->optics, data->optics, check_lens_cb) == optics_err)
+                optics_abort();
+        }
 
-        for (size_t i = 0; i < 2; ++i)
-            optics_epoch_inc(data->optics);
+        atomic_store(&data->done, true);
     }
-
     else {
-        enum { n = 100 };
+        enum { n = 1000 };
         struct optics_lens *lens[n];
 
-        for (size_t run = 0; run < 100; ++run) {
-
+        while (!atomic_load(&data->done)) {
             for (size_t i = 0; i < n; ++i) {
                 char key[128];
                 snprintf(key, sizeof(key), "key-%lu-%lu", id, i);
@@ -193,13 +188,12 @@ void run_alloc_test(size_t id, void *ctx)
                 if (!lens[i]) optics_abort();
             }
 
-            optics_foreach_lens(data->optics, data->optics, check_lens_cb);
+            for (size_t i = 0; i < n; ++i)
+                if (!optics_dist_record(lens[i], i)) optics_abort();
 
             for (size_t i = 0; i < n; ++i)
                 if (!optics_lens_free(lens[i])) optics_abort();
         }
-
-        atomic_fetch_add_explicit(&data->done, 1, memory_order_release);
     }
 }
 
@@ -207,8 +201,8 @@ optics_test_head(region_alloc_mt_test)
 {
     struct optics *optics = optics_create(test_name);
 
-    struct alloc_test data = { .optics = optics, .workers = cpus() };
-    run_threads(run_alloc_test, &data, data.workers);
+    struct alloc_test data = { .optics = optics };
+    run_threads(run_alloc_test, &data, 0);
 
     optics_close(optics);
 }
