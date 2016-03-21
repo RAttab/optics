@@ -33,3 +33,8 @@ Polling can be done using the `opticsd` binary like so:
 
 The daemon will automatically pick-up any newly created optics instances and
 start dumping them to its configured backends.
+
+
+### Pre-emptive Nit-picking
+
+* Not POSIX compliant.
