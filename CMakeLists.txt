@@ -63,17 +63,19 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
-add_library(optics SHARED
+set(OPTICS_SOURCES
     src/optics.c
     src/poller.c
     src/utils/utils.c
     src/backend_stdout.c
     src/backend_carbon.c)
+
+add_library(optics SHARED ${OPTICS_SOURCES})
 target_link_libraries(optics rt bsd)
 
-add_library(optics_tests SHARED
-    test/bench.c
-    test/test.c)
+add_library(optics_static STATIC ${OPTICS_SOURCES})
+
+add_library(optics_tests SHARED test/bench.c test/test.c)
 target_link_libraries(optics_tests optics ${CMOCKA_LIBRARIES})
 
 
