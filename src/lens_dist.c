@@ -7,7 +7,13 @@
 // config
 // -----------------------------------------------------------------------------
 
-enum { dist_reservoir_len = 1000 };
+// The size here is a trade-off between memory usage and the growth rate of the
+// error bounds as more elements are added to the reservoir. Since we're
+// calculating percentiles, we need at least 100 values which requires a
+// non-trivial amount space (sizeof(double) * 100 * 2 = 1600 bytes). Now since
+// there's no way to achieve a constant error bound with reservoir sampling, we
+// tweaked it to stay on the low side of memory consumption.
+enum { dist_reservoir_len = 200 };
 
 
 // -----------------------------------------------------------------------------

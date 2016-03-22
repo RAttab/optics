@@ -75,7 +75,7 @@ optics_test_head(lens_dist_record_read_exact_test)
     assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
     assert_dist_equal(value, 1, 1, 1, 1, 1, 0);
 
-    for (size_t max = 10; max <= 1000; max *= 10) {
+    for (size_t max = 10; max <= 200; max *= 10) {
         for (size_t i = 0; i < max; ++i) {
             assert_true(optics_dist_record(lens, i));
         }
@@ -88,7 +88,7 @@ optics_test_head(lens_dist_record_read_exact_test)
         assert_dist_equal(value, 0, 0, 0, 0, 0, 0);
     }
 
-    for (size_t max = 10; max <= 1000; max *= 10) {
+    for (size_t max = 10; max <= 200; max *= 10) {
         for (size_t i = 0; i < max; ++i) {
             assert_true(optics_dist_record(lens, max - (i + 1)));
         }
@@ -236,6 +236,8 @@ void run_epoch_test(size_t id, void *ctx)
     struct epoch_test *test = ctx;
     enum { iterations = 100 * 1000 };
 
+    rng_seed_with(rng_global(), 0);
+
     if (id) {
         for (size_t i = 0; i < iterations; ++i)
             optics_dist_record(test->lens, 1.0);
@@ -287,6 +289,8 @@ optics_test_tail()
 
 int main(void)
 {
+    rng_seed_with(rng_global(), 0);
+
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(lens_dist_open_close_test),
         cmocka_unit_test(lens_dist_record_read_exact_test),

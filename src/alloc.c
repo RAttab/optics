@@ -11,12 +11,12 @@
 static const size_t alloc_min_len = 8;
 static const size_t alloc_mid_inc = 16;
 static const size_t alloc_mid_len = 256;
-static const size_t alloc_max_len = 16384;
+static const size_t alloc_max_len = 4096;
 
-// [  0,     8] -> 1
-// ]  8,   256] -> 16 = 256 / 16
-// ]256, 16384] -> 6  = { 512, 1024, 2048, ... }
-enum { alloc_classes = 1 + 16 + 7 };
+// [  0,    8] -> 1
+// ]  8,  256] -> 16 = 256 / 16
+// ]256, 4096] -> 4  = { 512, 1024, 2048, 4096 }
+enum { alloc_classes = 1 + 16 + 4 };
 
 
 

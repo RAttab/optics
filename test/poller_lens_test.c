@@ -232,6 +232,8 @@ optics_test_tail()
 
 int main(void)
 {
+    rng_seed_with(rng_global(), 0);
+
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(poller_gauge_test),
         cmocka_unit_test(poller_counter_test),
