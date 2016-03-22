@@ -75,9 +75,6 @@ target_link_libraries(optics rt bsd)
 
 add_library(optics_static STATIC ${OPTICS_SOURCES})
 
-add_library(optics_tests SHARED test/bench.c test/test.c)
-target_link_libraries(optics_tests optics ${CMOCKA_LIBRARIES})
-
 
 #------------------------------------------------------------------------------#
 # BINS
@@ -95,6 +92,12 @@ optics_exec(example test)
 #------------------------------------------------------------------------------#
 # TESTS
 #------------------------------------------------------------------------------#
+
+if(CMOCKA_FOUND)
+    add_library(optics_tests SHARED test/bench.c test/test.c)
+    target_link_libraries(optics_tests optics ${CMOCKA_LIBRARIES})
+endif()
+
 
 find_program(VALGRIND_EXEC "valgrind")
 if(VALGRIND_EXEC)
