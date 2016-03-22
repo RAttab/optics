@@ -114,7 +114,7 @@ void put_bench_st(optics_unused void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        /* cmocka_unit_test(get_bench_st), */
+        cmocka_unit_test(get_bench_st),
         cmocka_unit_test(put_bench_st),
     };
 
