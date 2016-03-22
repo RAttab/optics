@@ -30,7 +30,7 @@ struct carbon
     uint64_t last_attempt;
 };
 
-bool carbon_connect(struct carbon *carbon)
+static bool carbon_connect(struct carbon *carbon)
 {
     assert(carbon->fd <= 0);
 
