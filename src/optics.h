@@ -6,7 +6,6 @@
 #pragma once
 
 #include "utils/compiler.h"
-#include "utils/log.h"
 #include "utils/errors.h"
 
 #include <stddef.h>
@@ -21,6 +20,7 @@
 enum { optics_name_max_len = 128 };
 
 typedef uint64_t optics_ts_t;
+
 
 // -----------------------------------------------------------------------------
 // optics

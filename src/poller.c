@@ -8,6 +8,7 @@
 #include "utils/key.h"
 #include "utils/time.h"
 #include "utils/shm.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +46,7 @@ struct optics_poller
 // -----------------------------------------------------------------------------
 
 
-struct optics_poller *optics_poller_alloc()
+struct optics_poller * optics_poller_alloc()
 {
     return calloc(1, sizeof(struct optics_poller));
 }

@@ -22,13 +22,13 @@
 
 static atomic_uint_fast8_t sigint = 0;
 
-void sigint_handler(int signal)
+static void sigint_handler(int signal)
 {
     assert(signal == SIGINT);
     atomic_store(&sigint, true);
 }
 
-void install_sigint()
+static void install_sigint()
 {
     struct sigaction sa = { .sa_handler = sigint_handler };
     if (sigaction(SIGINT, &sa, NULL) == -1) {
@@ -42,7 +42,7 @@ void install_sigint()
 // utils
 // -----------------------------------------------------------------------------
 
-void parse_carbon(struct optics_poller *poller, const char *args)
+static void parse_carbon(struct optics_poller *poller, const char *args)
 {
     char *buffer = strdup(args);
 
@@ -60,7 +60,7 @@ void parse_carbon(struct optics_poller *poller, const char *args)
     free(buffer);
 }
 
-void run_poller(struct optics_poller *poller, optics_ts_t freq)
+static void run_poller(struct optics_poller *poller, optics_ts_t freq)
 {
     if (!optics_poller_poll(poller)) optics_abort();
 
@@ -79,7 +79,7 @@ void run_poller(struct optics_poller *poller, optics_ts_t freq)
 // main
 // -----------------------------------------------------------------------------
 
-void print_usage()
+static void print_usage()
 {
     printf("Usage: \n"
             "  opticsd [--stdout] [--carbon=<host:port>]\n"

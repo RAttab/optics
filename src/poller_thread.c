@@ -23,7 +23,7 @@ struct optics_thread
 // poller
 // -----------------------------------------------------------------------------
 
-void * thread_fn(void *ctx)
+static void * thread_fn(void *ctx)
 {
     struct optics_thread *thread = ctx;
 
@@ -33,6 +33,8 @@ void * thread_fn(void *ctx)
         // pthread cancellation point.
         nsleep(thread->freq * 1000 * 1000 * 1000);
     }
+
+    return NULL;
 }
 
 

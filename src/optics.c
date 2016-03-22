@@ -12,6 +12,7 @@
 #include "utils/shm.h"
 #include "utils/time.h"
 #include "utils/bits.h"
+#include "utils/log.h"
 
 #include <assert.h>
 #include <string.h>
@@ -175,7 +176,7 @@ bool optics_unlink(const char *name)
     return region_unlink(name);
 }
 
-int optics_unlink_all_cb(void *ctx, const char *name)
+static int optics_unlink_all_cb(void *ctx, const char *name)
 {
     (void) ctx;
     optics_unlink(name);

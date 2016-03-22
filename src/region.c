@@ -233,7 +233,7 @@ static optics_off_t region_grow(struct region *region, size_t len)
 
     slock_lock(&region->lock);
 
-    // len is only modified by grow while holding a lock. no synchronization
+    // pos is only modified by grow while holding a lock. no synchronization
     // required here.
     size_t old_pos = atomic_load_explicit(&region->pos, memory_order_relaxed);
     size_t new_pos = old_pos + len;
@@ -258,7 +258,7 @@ static optics_off_t region_grow(struct region *region, size_t len)
     // We remap the entire file into memory while keeping the old mapping
     // around. This is basically a hack to keep our existing pointer valid
     // without fragmenting the memory region which would slow down calls to
-    // region_vma_access.
+    // region_ptr.
 
     struct region_vma *old = malloc(sizeof(*old));
     *old = region->vma;
@@ -274,9 +274,9 @@ static optics_off_t region_grow(struct region *region, size_t len)
     region->vma.next = old;
     region->vma.len = new_len;
 
-    // pos must be written after ptr to ensure that even if we read a new
-    // ptr and a stale len then everything we still only have access to a
-    // correct area of memory while the inverse is not true.
+    // pos must be written after ptr to ensure that even if we read a new ptr
+    // and a stale pos then we still only have access to a correct area of
+    // memory while the inverse is not true.
     atomic_store_explicit(&region->vma.ptr, (uintptr_t) ptr, memory_order_relaxed);
     atomic_store_explicit(&region->pos, new_pos, memory_order_release);
 
@@ -292,7 +292,7 @@ static optics_off_t region_grow(struct region *region, size_t len)
     return 0;
 }
 
-// can be called concurrently with an ongoing grow operation and must therefore
+// Can be called concurrently with an ongoing grow operation and must therefore
 // be synchronized with it.
 static void * region_ptr_unsafe(struct region *region, optics_off_t off, size_t len)
 {

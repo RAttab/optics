@@ -22,14 +22,6 @@ static_assert(sizeof(uint64_t) == sizeof(double),
         "if this failed then sucks to be you");
 
 
-// The only officially supported way to do type-punning by gcc.
-union lens_gauge_convert
-{
-    uint64_t ivalue;
-    double fvalue;
-};
-
-
 // -----------------------------------------------------------------------------
 // impl
 // -----------------------------------------------------------------------------

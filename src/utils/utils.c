@@ -5,6 +5,7 @@
 
 #include "optics.h"
 
+#include "log.h"
 #include "errors.h"
 #include "thread.h"
 #include "time.h"
