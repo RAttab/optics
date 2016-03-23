@@ -44,6 +44,8 @@
 // asserts
 // -----------------------------------------------------------------------------
 
+void assert_mt();
+
 bool assert_float_equal_impl(double a, double b, double epsilon);
 
 #define assert_float_equal(a, b, epsilon)                       \

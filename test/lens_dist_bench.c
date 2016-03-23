@@ -43,6 +43,7 @@ optics_test_tail()
 
 optics_test_head(lens_dist_record_bench_mt)
 {
+    assert_mt();
     struct optics *optics = optics_create(test_name);
     struct optics_lens *lens = optics_dist_alloc(optics, "my_dist");
 
@@ -87,6 +88,7 @@ optics_test_tail()
 
 optics_test_head(lens_dist_read_bench_mt)
 {
+    assert_mt();
     struct optics *optics = optics_create(test_name);
     struct optics_lens *lens = optics_dist_alloc(optics, "my_dist");
 
@@ -123,6 +125,7 @@ void run_mixed_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 
 optics_test_head(lens_dist_mixed_bench_mt)
 {
+    assert_mt();
     struct optics *optics = optics_create(test_name);
     struct optics_lens *lens = optics_dist_alloc(optics, "my_dist");
 

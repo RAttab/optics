@@ -27,6 +27,7 @@ void harness_bench_st(optics_unused void **state)
 
 void harness_bench_mt(optics_unused void **state)
 {
+    assert_mt();
     optics_bench_mt("harness_bench_mt", run_harness_bench, NULL);
 }
 
@@ -50,6 +51,7 @@ void sleep_bench_st(optics_unused void **state)
 
 void sleep_bench_mt(optics_unused void **state)
 {
+    assert_mt();
     optics_bench_mt("sleep_bench_mt", run_sleep_bench, NULL);
 }
 

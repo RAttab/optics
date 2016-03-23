@@ -171,6 +171,7 @@ void run_epoch_test(size_t id, void *ctx)
 
 optics_test_head(lens_counter_epoch_mt_test)
 {
+    assert_mt();
     struct optics *optics = optics_create(test_name);
     struct optics_lens *lens = optics_counter_alloc(optics, "my_counter");
 

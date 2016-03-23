@@ -88,8 +88,10 @@ optics_test_head(lens_get_bench)
         snprintf(buffer, sizeof(buffer), "%s_%lu_st", test_name, count);
         optics_bench_st(buffer, run_get_bench, &bench);
 
-        snprintf(buffer, sizeof(buffer), "%s_%lu_mt", test_name, count);
-        optics_bench_mt(buffer, run_get_bench, &bench);
+        if (cpus() >= 2) {
+            snprintf(buffer, sizeof(buffer), "%s_%lu_mt", test_name, count);
+            optics_bench_mt(buffer, run_get_bench, &bench);
+        }
 
         close_lenses(list, count);
         optics_close(optics);
@@ -131,6 +133,7 @@ optics_test_tail()
 
 optics_test_head(lens_alloc_bench_mt)
 {
+    assert_mt();
     optics_bench_mt(test_name, run_alloc_bench, (void *) test_name);
 }
 optics_test_tail()
@@ -169,6 +172,7 @@ optics_test_tail()
 
 optics_test_head(lens_free_bench_mt)
 {
+    assert_mt();
     optics_bench_mt(test_name, run_free_bench, (void *) test_name);
 }
 optics_test_tail()

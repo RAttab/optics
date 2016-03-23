@@ -213,6 +213,7 @@ void run_alloc_test(size_t id, void *ctx)
 
 optics_test_head(region_alloc_mt_test)
 {
+    assert_mt();
     struct optics *optics = optics_create(test_name);
 
     struct alloc_test data = { .optics = optics };

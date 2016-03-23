@@ -267,6 +267,7 @@ void run_epoch_test(size_t id, void *ctx)
 
 optics_test_head(lens_dist_epoch_mt_test)
 {
+    assert_mt();
     struct optics *optics = optics_create(test_name);
     struct optics_lens *lens = optics_dist_alloc(optics, "my_dist");
 

@@ -50,7 +50,7 @@ optics_test_head(lens_basics_st_test)
 
         for (size_t i = 0; i < n; ++i) {
             size_t j = iteration % 2 ? i : n - i - 1;
-            
+
             char name[optics_name_max_len];
             snprintf(name, sizeof(name), "lens_%lu", j);
 
@@ -84,10 +84,10 @@ void run_basics_mt(size_t thread_id, void *ctx)
 
     enum { n = 100 };
     struct optics_lens *lens[n] = {0};
-    
+
     char name[optics_name_max_len];
     size_t name_i = snprintf(name, sizeof(name), "prefix_%lu_", thread_id);
-    
+
 
     for (size_t iteration = 0; iteration < 100; ++iteration) {
         for (size_t i = 0; i < n; ++i) {
@@ -118,8 +118,11 @@ void run_basics_mt(size_t thread_id, void *ctx)
 
 optics_test_head(lens_basics_mt_test)
 {
+    assert_mt();
     struct optics *optics = optics_create(test_name);
+
     run_threads(run_basics_mt, optics, 0);
+
     optics_close(optics);
 }
 optics_test_tail()

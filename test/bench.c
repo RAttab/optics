@@ -244,10 +244,5 @@ static void bench_mt_policy(
 
 void optics_bench_mt(const char *title, optics_bench_fn_t fn, void *ctx)
 {
-    if (cpus() == 1) {
-        printf("bench: %-30s -- mono-core system, skip", title);
-        return;
-    }
-
     bench_runner(bench_mt_policy, title, fn, ctx, cpus());
 }
