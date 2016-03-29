@@ -6,7 +6,7 @@
 #pragma once
 
 #include "optics_priv.h"
-#include "poller.h"
+#include "utils/errors.h"
 #include "utils/log.h"
 #include "utils/rng.h"
 #include "utils/thread.h"

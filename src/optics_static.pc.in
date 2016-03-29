@@ -1,8 +1,8 @@
-prefix=/usr/local
+prefix=@pc_prefix@
 includedir=${prefix}/include
 
 Name: Optics static library
 Description: Metrics gathering library
 Version: 1.0.0
-Cflags: -I${includedir}/optics
+Cflags: -I${includedir}
 Libs: -loptics_static -lrt -lbsd

@@ -4,7 +4,7 @@
 */
 
 #include "optics_priv.h"
-#include "poller.h"
+#include "utils/errors.h"
 #include "utils/key.h"
 #include "utils/time.h"
 #include "utils/shm.h"

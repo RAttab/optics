@@ -5,9 +5,7 @@
 
 #pragma once
 
-#include "utils/compiler.h"
-#include "utils/errors.h"
-
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -17,9 +15,35 @@
 // config
 // -----------------------------------------------------------------------------
 
-enum { optics_name_max_len = 128 };
+enum {
+    optics_name_max_len = 128,
+    optics_err_msg_cap = 1024,
+    optics_err_backtrace_cap = 256,
+};
 
 typedef uint64_t optics_ts_t;
+
+
+// -----------------------------------------------------------------------------
+// error
+// -----------------------------------------------------------------------------
+
+struct optics_error
+{
+    const char *file;
+    int line;
+
+    int errno_; // errno can be a macro hence the underscore.
+    char msg[optics_err_msg_cap];
+
+    void *backtrace[optics_err_backtrace_cap];
+    int backtrace_len;
+};
+
+extern __thread struct optics_error optics_errno;
+
+void optics_perror(struct optics_error *err);
+size_t optics_strerror(struct optics_error *err, char *dest, size_t len);
 
 
 // -----------------------------------------------------------------------------
@@ -74,3 +98,39 @@ bool optics_gauge_set(struct optics_lens *, double value);
 
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
 bool optics_dist_record(struct optics_lens *, double value);
+
+
+// -----------------------------------------------------------------------------
+// poller
+// -----------------------------------------------------------------------------
+
+struct optics_poller;
+
+struct optics_poller *optics_poller_alloc();
+void optics_poller_free(struct optics_poller *);
+
+typedef void (*optics_backend_cb_t) (void *ctx, uint64_t ts, const char *key, double value);
+typedef void (*optics_backend_free_t) (void *ctx);
+bool optics_poller_backend(
+        struct optics_poller *, void *ctx, optics_backend_cb_t cb, optics_backend_free_t free);
+
+bool optics_poller_poll(struct optics_poller *poller);
+bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts);
+
+
+// -----------------------------------------------------------------------------
+// thread
+// -----------------------------------------------------------------------------
+
+struct optics_thread;
+
+struct optics_thread * optics_thread_start(struct optics_poller *poller, optics_ts_t freq);
+bool optics_thread_stop(struct optics_thread *thread);
+
+
+// -----------------------------------------------------------------------------
+// backends
+// -----------------------------------------------------------------------------
+
+void optics_dump_stdout(struct optics_poller *);
+void optics_dump_carbon(struct optics_poller *, const char *host, const char *port);

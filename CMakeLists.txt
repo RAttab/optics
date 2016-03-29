@@ -82,11 +82,32 @@ add_library(optics_static STATIC ${OPTICS_SOURCES})
 
 function(optics_exec name dir)
     add_executable(${name} ${dir}/${name}.c)
-    target_link_libraries(${name} optics)
+    target_link_libraries(${name} optics_static rt bsd)
 endfunction()
 
 optics_exec(opticsd src)
 optics_exec(example test)
+
+
+#------------------------------------------------------------------------------#
+# INSTALL
+#------------------------------------------------------------------------------#
+
+install(TARGETS optics optics_static opticsd
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib)
+
+install(FILES src/optics.h DESTINATION include)
+
+set(pc_prefix ${CMAKE_INSTALL_PREFIX})
+function(optics_pc name)
+    configure_file(src/${name}.pc.in lib/${name}.pc @ONLY)
+    install(FILES lib/${name}.pc DESTINATION lib/pkgconfig)
+endfunction()
+
+optics_pc(optics)
+optics_pc(optics_static)
 
 
 #------------------------------------------------------------------------------#
@@ -180,7 +201,7 @@ find_program(CLANG_TIDY_EXEC "clang-tidy")
 if(CLANG_TIDY_EXEC)
     message("CLANG-TIDY: ${CLANG_TIDY_EXEC}")
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-    add_custom_target(clang-tidy ALL
+    add_custom_target(clang-tidy
         ${CLANG_TIDY_EXEC} -header-filter='.*' src/*.c src/utils/*.c test/*.c)
 else()
     message("CLANG-TIDY: DISABLED - install clang to enable")

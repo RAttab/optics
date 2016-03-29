@@ -23,12 +23,16 @@ Building:
 cmake . -G Ninja
 ninja
 ninja test
+sudo ninja install
 ```
 
 Options:
 
 - `cmake . -G Ninja`: use ninja which is generally faster then gmake
 - `cmake . -DENABLE_UBSAN=ON`: compile with the gcc undefined behaviour sanitizer
+- `cmake . -DCMAKE_INSTALL_PREFIX=/path/to/install`: where files should be
+  installed (defaults to `/usr/local`)
+- `ninja clang-tidy`: compile opticsd with clang-tidy
 - `ctest -V . -L test`: Run only the funcitonal tests
 - `ctest -V . -L valgrind`: Run only the valgrind tests
 - `ctest -V . -L bench`: run only the benchmarks

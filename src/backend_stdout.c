@@ -3,7 +3,7 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
-#include "poller.h"
+#include "optics.h"
 
 #include <stdio.h>
 

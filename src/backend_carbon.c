@@ -3,7 +3,8 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
-#include "poller.h"
+#include "optics.h"
+#include "utils/errors.h"
 
 #include <time.h>
 #include <stdio.h>

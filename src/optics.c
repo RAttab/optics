@@ -5,6 +5,7 @@
 
 #include "optics_priv.h"
 #include "utils/compiler.h"
+#include "utils/errors.h"
 #include "utils/type_pun.h"
 #include "utils/htable.h"
 #include "utils/lock.h"

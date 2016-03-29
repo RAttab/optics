@@ -1,8 +1,8 @@
-prefix=/usr/local
+prefix=@pc_prefix@
 includedir=${prefix}/include
 
 Name: Optics library
 Description: Metrics gathering library
 Version: 1.0.0
-Cflags: -I${includedir}/optics -loptics
+Cflags: -I${includedir}
 Libs: -loptics
