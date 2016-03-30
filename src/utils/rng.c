@@ -56,15 +56,12 @@ uint64_t rng_gen(struct rng *rng)
     return rng->x * UINT64_C(2685821657736338717);
 }
 
-// Directly build the correct bit-pattern for a double using our 64 bit random
-// value. For more details, see: http://xorshift.di.unimi.it/#remarks
-double rng_gen_float(struct rng *rng)
-{
-    uint64_t x = UINT64_C(0x3FF) << 52 | rng_gen(rng) >> 12;
-    return *((double *) &x) - 1.0;
-}
-
 uint64_t rng_gen_range(struct rng *rng, uint64_t min, uint64_t max)
 {
     return rng_gen(rng) % (max - min) + min;
+}
+
+bool rng_gen_prob(struct rng *rng, double prob)
+{
+    return rng_gen(rng) <= prob * rng_max();
 }
