@@ -5,6 +5,7 @@
 
 #include "optics.h"
 #include "utils/errors.h"
+#include "utils/socket.h"
 
 #include <time.h>
 #include <stdio.h>
@@ -12,10 +13,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <unistd.h>
-#include <netdb.h>
+#include <sys/socket.h>
 
 
 // -----------------------------------------------------------------------------
@@ -35,36 +34,10 @@ static bool carbon_connect(struct carbon *carbon)
 {
     assert(carbon->fd <= 0);
 
-    struct addrinfo hints = {0};
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    struct addrinfo *head;
-    int err = getaddrinfo(carbon->host, carbon->port, &hints, &head);
-    if (err) {
-        optics_warn("unable to resolve carbon host '%s:%s': %s",
-                carbon->host, carbon->port, gai_strerror(err));
-        return false;
-    }
-
-    for (struct addrinfo *addr = head; addr; addr = addr->ai_next) {
-
-        carbon->fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-        if (carbon->fd == -1) continue;
-
-        if (!connect(carbon->fd, addr->ai_addr, addr->ai_addrlen))
-            break;
-
-        close(carbon->fd);
-        carbon->fd = -1;
-    }
-
-    freeaddrinfo(head);
-
+    carbon->fd = socket_stream_connect(carbon->host, carbon->port);
     if (carbon->fd > 0) return true;
 
-    optics_warn_errno("unable to connect carbon socket for host '%s:%s'",
-            carbon->host, carbon->port);
+    optics_perror(&optics_errno);
     return false;
 }
 
@@ -113,6 +86,8 @@ static void carbon_free(void *ctx)
 {
     struct carbon *carbon = ctx;
     close(carbon->fd);
+    free((void *) carbon->host);
+    free((void *) carbon->port);
     free(carbon);
 }
 

@@ -152,6 +152,7 @@ optics_cmocka_test(lens_counter)
 optics_cmocka_test(lens_dist)
 optics_cmocka_test(poller)
 optics_cmocka_test(poller_lens)
+optics_cmocka_test(backend_carbon)
 
 
 #------------------------------------------------------------------------------#

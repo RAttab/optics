@@ -14,6 +14,7 @@
 #include "lock.h"
 #include "shm.h"
 #include "htable.h"
+#include "socket.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,11 +24,13 @@
 #include <stdatomic.h>
 
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <execinfo.h>
 #include <dirent.h>
+#include <netdb.h>
 
 #include "log.c"
 #include "errors.c"
@@ -37,3 +40,4 @@
 #include "key.c"
 #include "shm.c"
 #include "htable.c"
+#include "socket.c"
