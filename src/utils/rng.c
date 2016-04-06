@@ -63,5 +63,5 @@ uint64_t rng_gen_range(struct rng *rng, uint64_t min, uint64_t max)
 
 bool rng_gen_prob(struct rng *rng, double prob)
 {
-    return rng_gen(rng) <= prob * rng_max();
+    return rng_gen(rng) <= (uint64_t) (prob * rng_max());
 }
