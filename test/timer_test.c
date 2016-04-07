@@ -11,7 +11,7 @@
 // basics
 // -----------------------------------------------------------------------------
 
-#define assert_timer(duration, scale, exp, eps)         \
+#define assert_timer(duration, scale, exp)              \
     do {                                                \
         optics_timer_t t0;                              \
         optics_timer_start(&t0);                        \
@@ -19,18 +19,18 @@
         nsleep(duration);                               \
                                                         \
         double diff = optics_timer_elapsed(&t0, scale); \
-        assert_float_equal(diff, exp, eps);             \
+        assert_float_equal(diff, exp, exp);             \
     } while (false)
 
 
 optics_test_head(basics_test)
 {
     // unfortunately, nsleep is really innacurate a lower resolution.
-    const size_t sleep = 1000 * 1000;
-    assert_timer(sleep, optics_sec, 1e-3, 2e-4);
-    assert_timer(sleep, optics_msec, 1.0, 0.2);
-    assert_timer(sleep, optics_usec, 1e3, 2e2);
-    assert_timer(sleep, optics_nsec, 1e6, 2e5);
+    const size_t sleep = 10 * 1000 * 1000;
+    assert_timer(sleep, optics_sec, 1e-2);
+    assert_timer(sleep, optics_msec, 10.0);
+    assert_timer(sleep, optics_usec, 1e4);
+    assert_timer(sleep, optics_nsec, 1e7);
 }
 optics_test_tail()
 

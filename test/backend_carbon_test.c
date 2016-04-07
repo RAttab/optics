@@ -34,7 +34,7 @@ optics_test_head(external_test)
 
     // When turned on the test will take longer so you can have fun starting and
     // stopping carbon. Leave off by default.
-    enum { test_disconnects = true };
+    enum { test_disconnects = false };
 
     if (!test_disconnects) assert_carbon();
 
