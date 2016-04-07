@@ -93,12 +93,15 @@ void optics_lens_close(struct optics_lens *);
 bool optics_lens_free(struct optics_lens *);
 
 struct optics_lens * optics_counter_alloc(struct optics *, const char *name);
+struct optics_lens * optics_counter_alloc_get(struct optics *, const char *name);
 bool optics_counter_inc(struct optics_lens *, int64_t value);
 
 struct optics_lens * optics_gauge_alloc(struct optics *, const char *name);
+struct optics_lens * optics_gauge_alloc_get(struct optics *, const char *name);
 bool optics_gauge_set(struct optics_lens *, double value);
 
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
+struct optics_lens * optics_dist_alloc_get(struct optics *, const char *name);
 bool optics_dist_record(struct optics_lens *, double value);
 
 

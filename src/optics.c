@@ -410,6 +410,27 @@ optics_lens_alloc(struct optics *optics, struct lens *lens)
 
 }
 
+static struct optics_lens *
+optics_lens_alloc_get(struct optics *optics, struct lens *lens)
+{
+    {
+        slock_lock(&optics->lock);
+
+        struct htable_ret ret = htable_put(&optics->keys, lens_name(lens), lens_off(lens));
+
+        if (ret.ok) optics_push_lens(optics, lens);
+        else lens = lens_ptr(optics, ret.value);
+
+        slock_unlock(&optics->lock);
+    }
+
+    struct optics_lens *ol = calloc(1, sizeof(struct optics_lens));
+    ol->optics = optics;
+    ol->lens = lens;
+    return ol;
+
+}
+
 void optics_lens_close(struct optics_lens *lens)
 {
     free(lens);
@@ -463,6 +484,17 @@ struct optics_lens * optics_counter_alloc(struct optics *optics, const char *nam
     return NULL;
 }
 
+struct optics_lens * optics_counter_alloc_get(struct optics *optics, const char *name)
+{
+    struct lens *counter = lens_counter_alloc(optics, name);
+    if (!counter) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc_get(optics, counter);
+    if (lens->lens != counter) lens_free(optics, counter);
+
+    return lens;
+}
+
 bool optics_counter_inc(struct optics_lens *lens, int64_t value)
 {
     return lens_counter_inc(lens, optics_epoch(lens->optics), value);
@@ -491,6 +523,17 @@ struct optics_lens * optics_gauge_alloc(struct optics *optics, const char *name)
     return NULL;
 }
 
+struct optics_lens * optics_gauge_alloc_get(struct optics *optics, const char *name)
+{
+    struct lens *gauge = lens_gauge_alloc(optics, name);
+    if (!gauge) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc_get(optics, gauge);
+    if (lens->lens != gauge) lens_free(optics, gauge);
+
+    return lens;
+}
+
 bool optics_gauge_set(struct optics_lens *lens, double value)
 {
     return lens_gauge_set(lens, optics_epoch(lens->optics), value);
@@ -517,6 +560,17 @@ struct optics_lens * optics_dist_alloc(struct optics *optics, const char *name)
 
     lens_free(optics, dist);
     return NULL;
+}
+
+struct optics_lens * optics_dist_alloc_get(struct optics *optics, const char *name)
+{
+    struct lens *dist = lens_dist_alloc(optics, name);
+    if (!dist) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc_get(optics, dist);
+    if (lens->lens != dist) lens_free(optics, dist);
+
+    return lens;
 }
 
 bool optics_dist_record(struct optics_lens *lens, double value)
