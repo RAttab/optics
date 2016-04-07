@@ -16,18 +16,18 @@
 // that gcc and clang won't complain if you typedef the same name to the same
 // type but will if they difer. Which is perfect since we want to make sure they
 // line up without having to include optics.h in this header or vice-versa.
-typedef uint64_t optics_ts_t ;
+typedef uint64_t optics_ts_t;
 
 optics_ts_t clock_wall();
 optics_ts_t clock_rdtsc();
 
-#define clock_realtime(ts)                                              \
-    do {                                                                \
-        if (optics_unlikely(clock_gettime(CLOCK_REALTIME, (ts)) < 0)) { \
-            optics_fail_errno("unable to read realtime clock");         \
-            optics_abort();                                             \
-        }                                                               \
-    } while (false)
+inline void clock_monotonic(struct timespec *ts)
+{
+    if (optics_unlikely(clock_gettime(CLOCK_MONOTONIC, ts) == -1)) {
+        optics_fail_errno("unable to read monotonic clock");
+        optics_abort();
+    }
+}
 
 
 // -----------------------------------------------------------------------------
@@ -36,4 +36,3 @@ optics_ts_t clock_rdtsc();
 
 bool nsleep(uint64_t nanos);
 void yield();
-

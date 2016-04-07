@@ -5,7 +5,9 @@
 
 #pragma once
 
+#include <time.h>
 #include <errno.h>
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -98,6 +100,35 @@ bool optics_gauge_set(struct optics_lens *, double value);
 
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
 bool optics_dist_record(struct optics_lens *, double value);
+
+
+// -----------------------------------------------------------------------------
+// timer
+// -----------------------------------------------------------------------------
+
+typedef struct timespec optics_timer_t;
+
+static const double optics_sec = 1.0e-9;
+static const double optics_msec = 1.0e-6;
+static const double optics_usec = 1.0e-3;
+static const double optics_nsec = 1.0;
+
+inline void optics_timer_start(optics_timer_t *t0)
+{
+    int ret = clock_gettime(CLOCK_MONOTONIC, t0);
+    assert(!ret);
+}
+
+inline double optics_timer_elapsed(optics_timer_t *t0, double scale)
+{
+    struct timespec t1;
+    int ret = clock_gettime(CLOCK_MONOTONIC, &t1);
+    assert(!ret);
+
+    uint64_t secs = t1.tv_sec - t0->tv_sec;
+    uint64_t nanos = t1.tv_nsec - t0->tv_nsec;
+    return (secs * 1UL * 1000 * 1000 * 1000 + nanos) * scale;
+}
 
 
 // -----------------------------------------------------------------------------

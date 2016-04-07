@@ -10,7 +10,13 @@
 
 optics_ts_t clock_wall()
 {
-    return time(NULL);
+    struct timespec ts;
+
+    int ret = clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    if (!ret) return ts.tv_sec;
+
+    optics_fail_errno("unable to get realtime clock");
+    return 0;
 }
 
 uint64_t clock_rdtsc()
@@ -34,7 +40,7 @@ uint64_t clock_rdtsc()
 bool nsleep(uint64_t nanos)
 {
     struct timespec ts;
-    clock_realtime(&ts);
+    clock_monotonic(&ts);
 
     ts.tv_nsec += nanos;
     if (ts.tv_nsec >= 1000000000) {
@@ -43,7 +49,7 @@ bool nsleep(uint64_t nanos)
     }
 
     while (true) {
-        int ret = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, NULL);
+        int ret = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
         if (!ret) return true;
         if (errno == EINTR) continue;
 
