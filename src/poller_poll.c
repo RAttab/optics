@@ -32,7 +32,7 @@ struct poller_poll_ctx
 {
     struct optics_poller *poller;
     optics_epoch_t epoch;
-    struct key *key;
+    struct optics_key *key;
     optics_ts_t ts;
     optics_ts_t elapsed;
 };
@@ -49,7 +49,7 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
 {
     struct poller_poll_ctx *ctx = ctx_;
 
-    size_t old_key = key_push(ctx->key, optics_lens_name(lens));
+    size_t old_key = optics_key_push(ctx->key, optics_lens_name(lens));
 
     switch (optics_lens_type(lens)) {
     case optics_counter: poller_poll_counter(ctx, lens); break;
@@ -60,7 +60,7 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
         break;
     }
 
-    key_pop(ctx->key, old_key);
+    optics_key_pop(ctx->key, old_key);
     return optics_ok;
 }
 
@@ -72,8 +72,8 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
 static void poller_poll_optics(
         struct optics_poller *poller, struct poller_list_item *item, optics_ts_t ts)
 {
-    struct key *key = calloc(1, sizeof(*key));
-    key_push(key, optics_get_prefix(item->optics));
+    struct optics_key *key = calloc(1, sizeof(*key));
+    optics_key_push(key, optics_get_prefix(item->optics));
 
     struct poller_poll_ctx ctx = {
         .poller = poller,

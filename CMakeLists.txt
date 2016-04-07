@@ -144,6 +144,7 @@ function(optics_cmocka_test name)
     endif()
 endfunction()
 
+optics_cmocka_test(key)
 optics_cmocka_test(htable)
 optics_cmocka_test(region)
 optics_cmocka_test(timer)

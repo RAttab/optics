@@ -10,7 +10,6 @@
 #include "thread.h"
 #include "time.h"
 #include "rng.h"
-#include "key.h"
 #include "lock.h"
 #include "shm.h"
 #include "htable.h"

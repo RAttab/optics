@@ -3,7 +3,7 @@
    FreeBSD-style copyright and disclaimer apply
 */
 
-#include "key.h"
+#include "optics.h"
 
 #include <assert.h>
 #include <bsd/string.h>
@@ -12,24 +12,27 @@
 // key
 // -----------------------------------------------------------------------------
 
-size_t key_push(struct key *key, const char *suffix)
+size_t optics_key_push(struct optics_key *key, const char *suffix)
 {
-    size_t old = key->pos;
+    size_t old = key->len;
+    if (key->len + 1 == sizeof(key->data)) return old;
 
-    if (key->pos) {
-        key->buffer[key->pos] = '.';
-        key->pos++;
+    if (key->len) {
+        key->data[key->len] = '.';
+        key->len++;
     }
-    strlcpy(key->buffer + key->pos, suffix, sizeof(key->buffer) - key->pos);
 
-    key->pos += strnlen(suffix, optics_name_max_len);
-    assert(key->buffer[key->pos] == '\0');
+    key->len += strlcpy(key->data + key->len, suffix, sizeof(key->data) - key->len);
+    if (key->len >= sizeof(key->data)) key->len = sizeof(key->data) - 1;
 
+    assert(key->data[key->len] == '\0');
     return old;
 }
 
-void key_pop(struct key *key, size_t pos)
+void optics_key_pop(struct optics_key *key, size_t pos)
 {
-    key->pos = pos;
-    key->buffer[pos] = '\0';
+    assert(pos <= key->len);
+
+    key->len = pos;
+    key->data[pos] = '\0';
 }

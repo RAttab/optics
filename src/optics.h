@@ -103,6 +103,20 @@ bool optics_dist_record(struct optics_lens *, double value);
 
 
 // -----------------------------------------------------------------------------
+// key
+// -----------------------------------------------------------------------------
+
+struct optics_key
+{
+    size_t len;
+    char data[optics_name_max_len];
+};
+
+size_t optics_key_push(struct optics_key *key, const char *suffix);
+void optics_key_pop(struct optics_key *key, size_t pos);
+
+
+// -----------------------------------------------------------------------------
 // timer
 // -----------------------------------------------------------------------------
 
