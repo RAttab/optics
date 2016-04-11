@@ -27,6 +27,11 @@ inline void slock_lock(struct slock *l)
     } while (!ret);
 }
 
+inline bool slock_is_locked(struct slock *l)
+{
+    return atomic_load_explicit(&l->value, memory_order_acquire);
+}
+
 inline bool slock_try_lock(struct slock *l)
 {
     uint64_t old = 0;

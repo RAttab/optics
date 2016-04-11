@@ -134,7 +134,7 @@ bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts)
     // give a chance for stragglers to finish. We'd need full EBR to do this
     // properly but that would add overhead on the record side so we instead
     // just wait a bit and deal with stragglers if we run into them.
-    yield();
+    nsleep(1 * 1000 * 1000);
 
     for (size_t i = 0; i < to_poll.len; ++i)
         poller_poll_optics(poller, &to_poll.items[i], ts);

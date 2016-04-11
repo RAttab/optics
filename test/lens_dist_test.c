@@ -5,6 +5,7 @@
 
 #include "test.h"
 #include "utils/rng.h"
+#include "utils/time.h"
 
 
 // -----------------------------------------------------------------------------
@@ -260,6 +261,8 @@ size_t epoch_test_read_lens(struct epoch_test *test)
 
     struct optics_dist value;
     enum optics_ret ret;
+
+    nsleep(1 * 1000 * 1000);
 
     while ((ret = optics_dist_read(test->lens, epoch, &value)) == optics_busy);
     assert_int_equal(ret, optics_ok);
