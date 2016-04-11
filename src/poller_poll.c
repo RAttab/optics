@@ -117,7 +117,7 @@ static enum shm_ret poller_shm_cb(void *ctx, const char *name)
 
 bool optics_poller_poll(struct optics_poller *poller)
 {
-    return optics_poller_poll_at(poller, time(NULL));
+    return optics_poller_poll_at(poller, clock_wall());
 }
 
 bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts)
