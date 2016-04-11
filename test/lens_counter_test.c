@@ -124,6 +124,42 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
+// type
+// -----------------------------------------------------------------------------
+
+optics_test_head(lens_counter_type_test)
+{
+    const char * lens_name = "blah";
+    struct optics *optics = optics_create(test_name);
+
+    int64_t value;
+    optics_epoch_t epoch = optics_epoch(optics);
+
+    {
+        struct optics_lens *lens = optics_gauge_alloc(optics, lens_name);
+
+        assert_false(optics_counter_inc(lens, 1));
+        assert_int_equal(optics_counter_read(lens, epoch, &value), optics_err);
+
+        optics_lens_close(lens);
+    }
+
+
+    {
+        struct optics_lens *lens = optics_lens_get(optics, lens_name);
+
+        assert_false(optics_counter_inc(lens, 1));
+        assert_int_equal(optics_counter_read(lens, epoch, &value), optics_err);
+
+        optics_lens_close(lens);
+    }
+
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
 // epoch st
 // -----------------------------------------------------------------------------
 
@@ -231,6 +267,7 @@ int main(void)
         cmocka_unit_test(lens_counter_open_close_test),
         cmocka_unit_test(lens_counter_alloc_get_test),
         cmocka_unit_test(lens_counter_record_read_test),
+        cmocka_unit_test(lens_counter_type_test),
         cmocka_unit_test(lens_counter_epoch_st_test),
         cmocka_unit_test(lens_counter_epoch_mt_test),
     };
