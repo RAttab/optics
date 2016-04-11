@@ -12,13 +12,22 @@ struct optics_packed lens
 {
     optics_off_t off;
 
-    enum optics_lens_type type;
     size_t lens_len;
     size_t name_len;
 
     atomic_off_t next;
     optics_off_t prev;
+
+    // Struct is packed so keep the int at the bottom to avoid alignment issues
+    // (not that x86 cares all that much... I blame my OCD).
+    enum optics_lens_type type;
+
+    // Allign to a cache line to avoid alignment issues in the lens itself.
+    uint8_t padding[20];
 };
+
+static_assert(sizeof(struct lens) % 64 == 0,
+    "lens header should align to a cache line to avoid various alignment issues");
 
 
 // -----------------------------------------------------------------------------
