@@ -95,7 +95,7 @@ lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dis
     {
         // Since we're not locking the active epoch, we shouldn't only contend
         // with straglers which can be delt with by the poller.
-        if (!slock_try_lock(&dist->lock)) return optics_busy;
+        if (slock_is_locked(&dist->lock)) return optics_busy;
 
         value->n = dist->n;
         dist->n = 0;
