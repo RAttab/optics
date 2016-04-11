@@ -18,7 +18,7 @@
 // -----------------------------------------------------------------------------
 
 enum {
-    optics_name_max_len = 128,
+    optics_name_max_len = 256,
     optics_err_msg_cap = 1024,
     optics_err_backtrace_cap = 256,
 };
