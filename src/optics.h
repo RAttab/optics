@@ -7,8 +7,8 @@
 
 #include <time.h>
 #include <errno.h>
-#include <assert.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -132,15 +132,13 @@ static const double optics_nsec = 1.0;
 
 inline void optics_timer_start(optics_timer_t *t0)
 {
-    int ret = clock_gettime(CLOCK_MONOTONIC, t0);
-    assert(!ret);
+    if (clock_gettime(CLOCK_MONOTONIC, t0)) abort();
 }
 
 inline double optics_timer_elapsed(optics_timer_t *t0, double scale)
 {
     struct timespec t1;
-    int ret = clock_gettime(CLOCK_MONOTONIC, &t1);
-    assert(!ret);
+    if (clock_gettime(CLOCK_MONOTONIC, &t1)) abort();
 
     uint64_t secs = t1.tv_sec - t0->tv_sec;
     uint64_t nanos = t1.tv_nsec - t0->tv_nsec;

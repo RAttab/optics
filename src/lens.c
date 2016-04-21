@@ -138,7 +138,7 @@ static void lens_set_next(struct optics *optics, struct lens *lens, optics_off_t
     if (!next) return;
 
     struct lens* next_node = lens_ptr(optics, next);
-    assert(!next_node->prev);
+    optics_assert(!next_node->prev, "adding node not in a list: next=%p", (void *) next);
     lens_ptr(optics, next)->prev = lens->off;
 }
 
@@ -150,13 +150,15 @@ static void lens_kill(struct optics *optics, struct lens *lens)
 
     if (next_off) {
         struct lens *next = lens_ptr(optics, next_off);
-        assert(next->prev == lens->off);
+        optics_assert(next->prev == lens->off, "corrupted lens list: %p != %p",
+                (void *) next->prev, (void *) lens->off);
         next->prev = lens->prev;
     }
 
     if (lens->prev) {
         struct lens *prev = lens_ptr(optics, lens->prev);
-        assert(prev->next == lens->off);
+        optics_assert(prev->next == lens->off, "corrupted lens list: %p != %p",
+                (void *) prev->next, (void *) lens->off);
         atomic_store_explicit(&prev->next, next_off, memory_order_relaxed);
     }
 }

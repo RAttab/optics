@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <assert.h>
 #include <getopt.h>
 #include <unistd.h>
 #include <stdatomic.h>
@@ -25,7 +24,7 @@ static atomic_uint_fast8_t sigint = 0;
 
 static void sigint_handler(int signal)
 {
-    assert(signal == SIGINT);
+    optics_assert(signal == SIGINT, "unexpected signal: %d", signal);
     atomic_store(&sigint, true);
 }
 

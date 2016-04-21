@@ -99,7 +99,8 @@ static bool region_create(struct region *region, const char *name, size_t len)
     }
 
     size_t vma_len = region_default_len;
-    assert(vma_len == align(vma_len, page_len));
+    optics_assert(vma_len == align(vma_len, page_len), "misaligned vma_len: %p != %p",
+            (void *) vma_len, (void *) align(vma_len, page_len));
 
     int ret = ftruncate(region->fd, vma_len);
     if (ret == -1) {

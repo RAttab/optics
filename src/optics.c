@@ -313,7 +313,7 @@ optics_epoch_t optics_epoch_inc_at(
 
 static void optics_push_lens(struct optics *optics, struct lens *lens)
 {
-    assert(!slock_try_lock(&optics->lock));
+    optics_assert(!slock_try_lock(&optics->lock), "pushing lens without lock held");
 
     atomic_off_t *head = &optics->header->lens_head;
     optics_off_t old_head = atomic_load_explicit(head, memory_order_relaxed);
@@ -326,7 +326,7 @@ static void optics_push_lens(struct optics *optics, struct lens *lens)
 
 static void optics_remove_lens(struct optics *optics, struct lens *lens)
 {
-    assert(!slock_try_lock(&optics->lock));
+    optics_assert(!slock_try_lock(&optics->lock), "removing lens without lock held");
 
     lens_kill(optics, lens);
 

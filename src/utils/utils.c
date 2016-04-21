@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <assert.h>
 #include <stdatomic.h>
 
 #include <sys/types.h>

@@ -37,7 +37,8 @@ struct optics_packed alloc
 
 static size_t alloc_class(size_t *len)
 {
-    assert(*len <= alloc_max_len);
+    optics_assert(*len <= alloc_max_len,
+            "invalid alloc len: %lu > %lu", *len, alloc_max_len);
 
     if (*len <= alloc_min_len) {
         *len = alloc_min_len;
@@ -49,7 +50,8 @@ static size_t alloc_class(size_t *len)
         size_t class = ceil_div(*len, alloc_mid_inc);
         *len = class * alloc_mid_inc;
 
-        assert(class < alloc_classes);
+        optics_assert(class < alloc_classes,
+                "invalid computed class: %lu < %d", class, alloc_classes);
         return class;
     }
 
@@ -58,7 +60,8 @@ static size_t alloc_class(size_t *len)
     size_t bits = ctz(*len) - ctz(alloc_mid_len);
     size_t class = bits + (alloc_mid_len / alloc_mid_inc);
 
-    assert(class < alloc_classes);
+    optics_assert(class < alloc_classes,
+            "invalid computed class: %lu < %d", class, alloc_classes);
     return class;
 }
 
@@ -76,7 +79,7 @@ static optics_off_t alloc_fill_class(
 
     const size_t nodes = slab / len;
     optics_off_t end = start + (nodes * len);
-    assert(nodes > 2);
+    optics_assert(nodes > 2, "invalid node count: %lu <= 2", nodes);
 
     for (optics_off_t node = start + len; node + len < end; node += len) {
         optics_off_t *pnode = region_ptr(region, node, sizeof(*pnode));

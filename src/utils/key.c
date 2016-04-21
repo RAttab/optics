@@ -5,7 +5,6 @@
 
 #include "optics.h"
 
-#include <assert.h>
 #include <bsd/string.h>
 
 // -----------------------------------------------------------------------------
@@ -25,13 +24,15 @@ size_t optics_key_push(struct optics_key *key, const char *suffix)
     key->len += strlcpy(key->data + key->len, suffix, sizeof(key->data) - key->len);
     if (key->len >= sizeof(key->data)) key->len = sizeof(key->data) - 1;
 
-    assert(key->data[key->len] == '\0');
+    optics_assert(key->data[key->len] == '\0',
+            "key doesn't teminate with nil byte: len=%lu, char=%d",
+            key->len, key->data[key->len]);
     return old;
 }
 
 void optics_key_pop(struct optics_key *key, size_t pos)
 {
-    assert(pos <= key->len);
+    optics_assert(pos <= key->len, "invalid key pop: %lu > %lu", pos, key->len);
 
     key->len = pos;
     key->data[pos] = '\0';

@@ -39,7 +39,7 @@ void rng_seed_with(struct rng *rng, uint64_t seed)
     // We xor the seed with a randomly chosen number to avoid ending up with a 0
     // state which would be bad.
     rng->x = seed ^ UINT64_C(0xedef335f00e170b3);
-    assert(rng->x);
+    optics_assert(rng->x, "invalid nil state for rng");
 }
 
 

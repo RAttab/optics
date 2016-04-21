@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -32,7 +31,8 @@ struct carbon
 
 static bool carbon_connect(struct carbon *carbon)
 {
-    assert(carbon->fd <= 0);
+    optics_assert(carbon->fd <= 0,
+            "attempting to connect to carbon while already connected");
 
     carbon->fd = socket_stream_connect(carbon->host, carbon->port);
     if (carbon->fd > 0) return true;
