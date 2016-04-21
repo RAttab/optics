@@ -4,10 +4,9 @@
 # FreeBSD-style copyright and disclaimer apply
 #------------------------------------------------------------------------------#
 
-
-
 cmake_minimum_required(VERSION 3.0)
 project(optics)
+set(VERSION 1.0.1)
 
 enable_testing()
 
@@ -100,6 +99,7 @@ install(TARGETS optics optics_static opticsd
 
 install(FILES src/optics.h DESTINATION include)
 
+set(pc_version ${VERSION})
 set(pc_prefix ${CMAKE_INSTALL_PREFIX})
 function(optics_pc name)
     configure_file(src/${name}.pc.in lib/${name}.pc @ONLY)

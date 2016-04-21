@@ -3,6 +3,6 @@ includedir=${prefix}/include
 
 Name: Optics library
 Description: Metrics gathering library
-Version: 1.0.0
+Version: @pc_version@
 Cflags: -I${includedir}
 Libs: -loptics
