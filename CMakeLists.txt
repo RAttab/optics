@@ -4,9 +4,9 @@
 # FreeBSD-style copyright and disclaimer apply
 #------------------------------------------------------------------------------#
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 2.6)
 project(optics)
-set(VERSION 1.0.2)
+set(VERSION 1.0.3)
 
 enable_testing()
 
