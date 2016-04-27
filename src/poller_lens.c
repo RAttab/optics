@@ -16,8 +16,8 @@ static void poller_poll_counter(struct poller_poll_ctx *ctx, struct optics_lens 
         return;
     }
 
-    value /= (int64_t) ctx->elapsed;
-    poller_backend_record(ctx->poller, ctx->ts, ctx->key->data, value);
+    double rescaled = ((double) value) / ctx->elapsed;
+    poller_backend_record(ctx->poller, ctx->ts, ctx->key->data, rescaled);
 }
 
 
