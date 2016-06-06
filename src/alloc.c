@@ -24,10 +24,16 @@ enum { alloc_classes = 1 + 16 + 4 };
 // struct
 // -----------------------------------------------------------------------------
 
+struct optics_packed alloc_class
+{
+    optics_off_t alloc;
+    atomic_off_t free;
+};
+
 struct optics_packed alloc
 {
     struct slock lock;
-    optics_off_t classes[alloc_classes];
+    struct alloc_class classes[alloc_classes];
 };
 
 
@@ -94,8 +100,8 @@ static optics_off_t alloc_fill_class(
     {
         slock_lock(&alloc->lock);
 
-        *plast = alloc->classes[class];
-        alloc->classes[class] = start + len;
+        *plast = alloc->classes[class].alloc;
+        alloc->classes[class].alloc = start + len;
 
         slock_unlock(&alloc->lock);
     }
@@ -122,21 +128,28 @@ optics_off_t alloc_alloc(struct alloc *alloc, struct region *region, size_t len)
             len, alloc_max_len);
 
     size_t class = alloc_class(&len);
-    optics_off_t *pclass = &alloc->classes[class];
+    optics_off_t *head = &alloc->classes[class].alloc;
 
-    if (!*pclass) {
+    if (!*head) {
+        // Synchronizes with alloc_free to make sure that the linked list
+        // pointers are fully written before we make it available.
+        *head = atomic_exchange_explicit(
+                &alloc->classes[class].free, 0, memory_order_acquire);
+    }
+
+    if (!*head) {
         slock_unlock(&alloc->lock);
         return alloc_fill_class(alloc, region, len, class);
     }
 
-    optics_off_t off = *pclass;
+    optics_off_t off = *head;
     optics_off_t *pnode = region_ptr(region, off, len);
     if (!pnode) goto fail;
 
-    optics_assert(*pclass != *pnode,
+    optics_assert(*head != *pnode,
             "invalid alloc self-reference: %p", (void *) off);
 
-    *pclass = *pnode;
+    *head = *pnode;
     memset(pnode, 0, len);
 
     slock_unlock(&alloc->lock);
@@ -147,24 +160,30 @@ optics_off_t alloc_alloc(struct alloc *alloc, struct region *region, size_t len)
     return 0;
 }
 
+// Can't grab a lock since it might be called from the polling process. Instead,
+// we enqueue the free block in a lock-free linked list which is periodically
+// drained in its entirety back to the main allocation linked list.
 void alloc_free(
         struct alloc *alloc, struct region *region, optics_off_t off, size_t len)
 {
-    slock_lock(&alloc->lock);
-
     optics_assert(len <= alloc_max_len,
             "invalid free len: off=%p, len=%lu", (void *) off, len);
 
     size_t class = alloc_class(&len);
-    optics_off_t *pclass = &alloc->classes[class];
+    atomic_off_t *head = &alloc->classes[class].free;
 
     optics_off_t *pnode = region_ptr(region, off, len);
-    if (!pnode) goto fail;
-
+    if (!pnode) return;
     memset(pnode, 0xFF, len);
-    *pnode = *pclass;
-    *pclass = off;
 
-  fail:
-    slock_unlock(&alloc->lock);
+    // We never dereference the old head pointer so we don't have to synchronize
+    // anything.
+    optics_off_t old = atomic_load_explicit(head, memory_order_relaxed);
+    do {
+        *pnode = old;
+
+    // Synchronizes with alloc_alloc to make sure that the pointer to the old
+    // head is visible before we can read the node.
+    } while (!atomic_compare_exchange_weak_explicit(head, &old, off,
+                    memory_order_release, memory_order_relaxed));
 }
