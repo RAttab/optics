@@ -5,7 +5,12 @@
 
 #pragma once
 
+#include "compiler.h"
+#include "errors.h"
+
 #include <time.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 
 // -----------------------------------------------------------------------------

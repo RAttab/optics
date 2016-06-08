@@ -102,16 +102,22 @@ void optics_vfail_errno(const char *file, int line, const char *fmt, ...)
 static bool abort_on_warn = 0;
 void optics_dbg_abort_on_warn() { abort_on_warn = true; }
 
-void optics_vwarn(const char *file, int line, const char *fmt, ...)
+void optics_vwarn_va(const char *file, int line, const char *fmt, va_list args)
 {
-    va_list args;
-    va_start(args, fmt);
-
     struct optics_error err = { .file = file, .line = line };
     (void) vsnprintf(err.msg, optics_err_msg_cap, fmt, args);
     optics_backtrace(&err);
 
     optics_perror(&err);
+}
+
+
+void optics_vwarn(const char *file, int line, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    optics_vwarn_va(file, line, fmt, args);
 }
 
 void optics_vwarn_errno(const char *file, int line, const char *fmt, ...)

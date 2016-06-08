@@ -47,6 +47,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -std=gnu11 -pthread -D_GNU_SOURCE")
 
 include(FindPkgConfig)
 
+pkg_check_modules(MICROHTTPD REQUIRED libmicrohttpd)
+
 # Not installed on prod machine and is therefore optional
 pkg_check_modules(CMOCKA cmocka)
 if(CMOCKA_FOUND)
@@ -62,6 +64,8 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
+add_library(crest STATIC src/utils/crest/crest.c)
+
 set(OPTICS_SOURCES
     src/optics.c
     src/poller.c
@@ -70,7 +74,7 @@ set(OPTICS_SOURCES
     src/backend_carbon.c)
 
 add_library(optics SHARED ${OPTICS_SOURCES})
-target_link_libraries(optics rt bsd)
+target_link_libraries(optics rt bsd crest ${MICROHTTPD_LIBRARIES})
 
 add_library(optics_static STATIC ${OPTICS_SOURCES})
 
@@ -155,6 +159,7 @@ optics_cmocka_test(lens_dist)
 optics_cmocka_test(poller)
 optics_cmocka_test(poller_lens)
 optics_cmocka_test(backend_carbon)
+optics_cmocka_test(crest)
 
 
 #------------------------------------------------------------------------------#

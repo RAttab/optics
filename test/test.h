@@ -66,3 +66,42 @@ bool assert_htable_equal_impl(
         size_t len = sizeof(exp) / sizeof(struct htable_bucket);        \
         assert_true(assert_htable_equal_impl(set, exp, len, eps));  \
     } while (false)
+
+
+
+// -----------------------------------------------------------------------------
+// http
+// -----------------------------------------------------------------------------
+
+struct http_client;
+struct http_client * http_connect(unsigned port);
+void http_close(struct http_client *client);
+
+void http_req(struct http_client *, const char *method, const char *path, const char *body);
+bool http_assert_resp(struct http_client *, unsigned exp_code, const char *exp_body);
+
+
+#define assert_http_code(port, method, path, exp)               \
+    do {                                                        \
+        struct http_client *client = http_connect(port);        \
+        http_req(client, method, path, NULL);                   \
+        assert_true(http_assert_resp(client, exp, NULL));       \
+        http_close(client);                                     \
+    } while (false)
+
+#define assert_http_body(port, method, path, exp_code, exp_data)        \
+    do {                                                                \
+        struct http_client *client = http_connect(port);                \
+        http_req(client, method, path, NULL);                           \
+        assert_true(http_assert_resp(client, exp_code, exp_data));      \
+        http_close(client);                                             \
+    } while (false)
+
+#define assert_http_post(port, method, path, body, exp)         \
+    do {                                                        \
+        struct http_client *client = http_connect(port);        \
+        http_req(client, method, path, body);                   \
+        assert_true(http_assert_resp(client, exp, NULL));       \
+        http_close(client);                                     \
+    } while (false)
+

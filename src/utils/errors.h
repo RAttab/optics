@@ -8,6 +8,7 @@
 #include "compiler.h"
 
 #include <stddef.h>
+#include <stdarg.h>
 
 
 // -----------------------------------------------------------------------------
@@ -55,11 +56,16 @@ void optics_vwarn(const char *file, int line, const char *fmt, ...)
 void optics_vwarn_errno(const char *file, int line, const char *fmt, ...)
     optics_printf(3, 4);
 
+void optics_vwarn_va(const char *file, int line, const char *fmt, va_list args);
+
 #define optics_warn(...)                                \
     optics_vwarn(__FILE__, __LINE__, __VA_ARGS__)
 
 #define optics_warn_errno(...)                          \
     optics_vwarn_errno(__FILE__, __LINE__, __VA_ARGS__)
+
+#define optics_warn_va(fmt, args)                       \
+    optics_vwarn_va(__FILE__, __LINE__, fmt, args);
 
 // useful for pthread APIs which return the errno.
 #define optics_warn_ierrno(err, ...)                            \
