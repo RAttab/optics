@@ -42,8 +42,6 @@ struct poller_poll_ctx
 // lens
 // -----------------------------------------------------------------------------
 
-#include "poller_lens.c"
-
 
 static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
 {
@@ -51,14 +49,43 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
 
     size_t old_key = optics_key_push(ctx->key, optics_lens_name(lens));
 
-    switch (optics_lens_type(lens)) {
-    case optics_counter: poller_poll_counter(ctx, lens); break;
-    case optics_gauge:   poller_poll_gauge(ctx, lens); break;
-    case optics_dist:    poller_poll_dist(ctx, lens); break;
+    struct optics_poll poll = {
+        .key = ctx->key,
+        .type = optics_lens_type(lens),
+        .ts = ctx->ts,
+        .elapsed = ctx->elapsed
+    };
+
+    enum optics_ret ret;
+
+    switch (poll.type) {
+    case optics_counter:
+        ret = optics_counter_read(lens, ctx->epoch, &poll.value.counter);
+        break;
+
+    case optics_gauge:
+        ret = optics_gauge_read(lens, ctx->epoch, &poll.value.gauge);
+        break;
+
+    case optics_dist:
+        ret = optics_dist_read(lens, ctx->epoch, &poll.value.dist);
+        break;
+
     default:
         optics_fail("unknown poller type '%d'", optics_lens_type(lens));
+        ret = optics_err;
         break;
     }
+
+
+    if (ret == optics_ok)
+        poller_backend_record(ctx->poller, optics_poll_metric, &poll);
+
+    else if (ret == optics_busy)
+        optics_warn("skipping lens '%s'", ctx->key->data);
+
+    else if (ret == optics_err)
+        optics_warn("unable to read dist '%s': %s", ctx->key->data, optics_errno.msg);
 
     optics_key_pop(ctx->key, old_key);
     return optics_ok;
@@ -136,8 +163,12 @@ bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts)
     // just wait a bit and deal with stragglers if we run into them.
     nsleep(1 * 1000 * 1000);
 
+    poller_backend_record(poller, optics_poll_begin, NULL);
+
     for (size_t i = 0; i < to_poll.len; ++i)
         poller_poll_optics(poller, &to_poll.items[i], ts);
+
+    poller_backend_record(poller, optics_poll_done, NULL);
 
     for (size_t i = 0; i < to_poll.len; ++i)
        optics_close(to_poll.items[i].optics);

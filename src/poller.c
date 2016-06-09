@@ -83,10 +83,12 @@ bool optics_poller_backend(
 }
 
 static void poller_backend_record(
-        struct optics_poller *poller, optics_ts_t ts, const char *key, double value)
+        struct optics_poller *poller,
+        enum optics_poll_type type,
+        const struct optics_poll *poll)
 {
     for (size_t i = 0; i < poller->backends_len; ++i)
-        poller->backends[i].cb(poller->backends[i].ctx, ts, key, value);
+        poller->backends[i].cb(poller->backends[i].ctx, type, poll);
 }
 
 

@@ -32,15 +32,5 @@ enum optics_ret optics_counter_read(
 enum optics_ret optics_gauge_read(
         struct optics_lens *, optics_epoch_t epoch, double *value);
 
-
-struct optics_dist
-{
-    size_t n;
-    double p50;
-    double p90;
-    double p99;
-    double max;
-};
-
 enum optics_ret optics_dist_read(
         struct optics_lens *, optics_epoch_t epoch, struct optics_dist *value);

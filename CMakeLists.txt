@@ -64,17 +64,18 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
-add_library(crest STATIC src/utils/crest/crest.c)
-
 set(OPTICS_SOURCES
     src/optics.c
     src/poller.c
     src/utils/utils.c
+    src/utils/crest/crest.c
     src/backend_stdout.c
-    src/backend_carbon.c)
+    src/backend_carbon.c
+    src/backend_rest.c
+    src/backend_prometheus.c)
 
 add_library(optics SHARED ${OPTICS_SOURCES})
-target_link_libraries(optics rt bsd crest ${MICROHTTPD_LIBRARIES})
+target_link_libraries(optics rt bsd ${MICROHTTPD_LIBRARIES})
 
 add_library(optics_static STATIC ${OPTICS_SOURCES})
 
@@ -85,7 +86,7 @@ add_library(optics_static STATIC ${OPTICS_SOURCES})
 
 function(optics_exec name dir)
     add_executable(${name} ${dir}/${name}.c)
-    target_link_libraries(${name} optics_static rt bsd)
+    target_link_libraries(${name} optics_static rt bsd ${MICROHTTPD_LIBRARIES})
 endfunction()
 
 optics_exec(opticsd src)

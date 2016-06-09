@@ -43,3 +43,11 @@ lens_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *value
     *value = atomic_exchange_explicit(&counter->value[epoch], 0, memory_order_relaxed);
     return optics_ok;
 }
+
+static bool
+lens_counter_normalize(
+        const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
+{
+    double rescaled = ((double) poll->value.counter) / poll->elapsed;
+    return cb(ctx, poll->ts, poll->key->data, rescaled);
+}

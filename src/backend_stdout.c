@@ -12,11 +12,22 @@
 // callbacks
 // -----------------------------------------------------------------------------
 
-static void stdout_dump(void *ctx, optics_ts_t ts, const char *key, double value)
+static bool stdout_dump_normalized(
+        void *ctx, optics_ts_t ts, const char *key, double value)
 {
     (void) ctx;
 
     printf("[%lu] %s: %g\n", ts, key, value);
+
+    return true;
+}
+
+static void stdout_dump(
+        void *ctx, enum optics_poll_type type, const struct optics_poll *poll)
+{
+    if (type != optics_poll_metric) return;
+
+    (void) optics_poll_normalize(poll, stdout_dump_normalized, ctx);
 }
 
 

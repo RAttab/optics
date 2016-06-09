@@ -583,3 +583,22 @@ optics_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_d
 {
     return lens_dist_read(lens, epoch, value);
 }
+
+
+// -----------------------------------------------------------------------------
+// value
+// -----------------------------------------------------------------------------
+
+bool optics_poll_normalize(
+        const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
+{
+    switch (poll->type) {
+    case optics_counter: return lens_counter_normalize(poll, cb, ctx);
+    case optics_gauge: return lens_gauge_normalize(poll, cb, ctx);
+    case optics_dist: return lens_dist_normalize(poll, cb, ctx);
+    default:
+        optics_fail("unknown lens type '%d'", poll->type);
+        return false;
+    }
+}
+

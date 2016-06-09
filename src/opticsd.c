@@ -6,6 +6,7 @@
 #include "optics.h"
 #include "utils/errors.h"
 #include "utils/time.h"
+#include "utils/crest/crest.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -79,15 +80,18 @@ static void run_poller(struct optics_poller *poller, optics_ts_t freq)
 // main
 // -----------------------------------------------------------------------------
 
-static void print_usage()
+static void print_usage(FILE *file)
 {
-    printf("Usage: \n"
+    fprintf(file,
+            "Usage: \n"
             "  opticsd [--stdout] [--carbon=<host:port>]\n"
             "\n"
             "Options:\n"
             "  --dump-stdout              Dumps metrics to stdout\n"
             "  --dump-carbon=<host:port>  Dumps metrics to the given carbon host:port\n"
+            "  --dump-prometheus          Enables prometheus HTTP interface\n"
             "  --freq=<n>                 Number of seconds between each polling attempt [10]\n"
+            "  --http-port=<port>         Port for HTTP server [3002]\n"
             "  -h --help                  Prints this message\n");
 }
 
@@ -96,13 +100,19 @@ int main(int argc, char **argv)
 {
     struct optics_poller *poller = optics_poller_alloc();
     optics_ts_t freq = 10;
+    unsigned http_port = 3002;
     bool backend_selected = false;
+
+    struct crest *crest = crest_new();
+    optics_dump_rest(poller, crest);
 
     while (true) {
         static struct option options[] = {
             {"dump-carbon", required_argument, 0, 'c'},
             {"dump-stdout", no_argument, 0, 's'},
+            {"dump-prometheus", no_argument, 0, 'p'},
             {"freq", required_argument, 0, 'f'},
+            {"http-port", required_argument, 0, 'H'},
             {"help", no_argument, 0, 'h'},
             {0}
         };
@@ -114,11 +124,19 @@ int main(int argc, char **argv)
         case 'f':
             freq = atol(optarg);
             if (!freq) {
-                printf("invalid freq argument: %s\n", optarg);
-                print_usage();
+                fprintf(stderr, "invalid freq argument: %s\n", optarg);
+                print_usage(stderr);
                 return EXIT_FAILURE;
             }
             break;
+
+        case 'H':
+            http_port = atol(optarg);
+            if (!http_port) {
+                fprintf(stderr, "invalid freq argument: %s\n", optarg);
+                print_usage(stderr);
+                return EXIT_FAILURE;
+            }
 
         case 's':
             backend_selected = true;
@@ -130,18 +148,28 @@ int main(int argc, char **argv)
             parse_carbon(poller, optarg);
             break;
 
-        case 'h':
+        case 'p':
+            backend_selected = true;
+            optics_dump_prometheus(poller, crest);
+            break;
+
         default:
-            print_usage();
+            fprintf(stderr, "unknown option '%c'\n", opt_char);
+            // fallthrough
+
+        case 'h':
+            print_usage(stdout);
             return opt_char == 'h' ? EXIT_SUCCESS : EXIT_FAILURE;
         }
     }
 
     if (!backend_selected) {
-        printf("No dump option selected.\n");
-        print_usage();
+        fprintf(stderr, "No dump option selected.\n");
+        print_usage(stderr);
         return EXIT_FAILURE;
     }
+
+    crest_bind(crest, http_port);
 
     install_sigint();
     run_poller(poller, freq);

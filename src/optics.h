@@ -100,6 +100,15 @@ struct optics_lens * optics_gauge_alloc(struct optics *, const char *name);
 struct optics_lens * optics_gauge_alloc_get(struct optics *, const char *name);
 bool optics_gauge_set(struct optics_lens *, double value);
 
+struct optics_dist
+{
+    size_t n;
+    double p50;
+    double p90;
+    double p99;
+    double max;
+};
+
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
 struct optics_lens * optics_dist_alloc_get(struct optics *, const char *name);
 bool optics_dist_record(struct optics_lens *, double value);
@@ -147,6 +156,35 @@ inline double optics_timer_elapsed(optics_timer_t *t0, double scale)
 
 
 // -----------------------------------------------------------------------------
+// poll
+// -----------------------------------------------------------------------------
+
+union optics_poll_value
+{
+        int64_t counter;
+        double gauge;
+        struct optics_dist dist;
+};
+
+struct optics_poll
+{
+    struct optics_key *key;
+    enum optics_lens_type type;
+
+    optics_ts_t ts;
+    optics_ts_t elapsed;
+
+    union optics_poll_value value;
+};
+
+typedef bool (*optics_normalize_cb_t) (
+        void *ctx, optics_ts_t ts, const char *key, double value);
+
+bool optics_poll_normalize(
+        const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx);
+
+
+// -----------------------------------------------------------------------------
 // poller
 // -----------------------------------------------------------------------------
 
@@ -155,10 +193,24 @@ struct optics_poller;
 struct optics_poller *optics_poller_alloc();
 void optics_poller_free(struct optics_poller *);
 
-typedef void (*optics_backend_cb_t) (void *ctx, uint64_t ts, const char *key, double value);
+enum optics_poll_type
+{
+    optics_poll_begin,
+    optics_poll_metric,
+    optics_poll_done,
+};
+
 typedef void (*optics_backend_free_t) (void *ctx);
+typedef void (*optics_backend_cb_t) (
+        void *ctx,
+        enum optics_poll_type type,
+        const struct optics_poll *poll);
+
 bool optics_poller_backend(
-        struct optics_poller *, void *ctx, optics_backend_cb_t cb, optics_backend_free_t free);
+        struct optics_poller *,
+        void *ctx,
+        optics_backend_cb_t cb,
+        optics_backend_free_t free);
 
 bool optics_poller_poll(struct optics_poller *poller);
 bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts);
@@ -170,7 +222,8 @@ bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts);
 
 struct optics_thread;
 
-struct optics_thread * optics_thread_start(struct optics_poller *poller, optics_ts_t freq);
+struct optics_thread * optics_thread_start(
+        struct optics_poller *poller, optics_ts_t freq);
 bool optics_thread_stop(struct optics_thread *thread);
 
 

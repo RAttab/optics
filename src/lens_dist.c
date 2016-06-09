@@ -120,3 +120,39 @@ lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dis
 
     return optics_ok;
 }
+
+static bool
+lens_dist_normalize(
+        const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
+{
+    bool ret = false;
+    size_t old;
+
+    old = optics_key_push(poll->key, "count");
+    double rescaled = (double) poll->value.dist.n / poll->elapsed;
+    ret = cb(ctx, poll->ts, poll->key->data, rescaled);
+    optics_key_pop(poll->key, old);
+    if (!ret) return false;
+
+    old = optics_key_push(poll->key, "p50");
+    ret = cb(ctx, poll->ts, poll->key->data, poll->value.dist.p50);
+    optics_key_pop(poll->key, old);
+    if (!ret) return false;
+
+    old = optics_key_push(poll->key, "p90");
+    ret = cb(ctx, poll->ts, poll->key->data, poll->value.dist.p90);
+    optics_key_pop(poll->key, old);
+    if (!ret) return false;
+
+    old = optics_key_push(poll->key, "p99");
+    ret = cb(ctx, poll->ts, poll->key->data, poll->value.dist.p99);
+    optics_key_pop(poll->key, old);
+    if (!ret) return false;
+
+    old = optics_key_push(poll->key, "max");
+    ret = cb(ctx, poll->ts, poll->key->data, poll->value.dist.max);
+    optics_key_pop(poll->key, old);
+    if (!ret) return false;
+
+    return true;
+}

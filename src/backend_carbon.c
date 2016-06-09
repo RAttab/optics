@@ -68,7 +68,8 @@ static void carbon_send(
 // callbacks
 // -----------------------------------------------------------------------------
 
-static void carbon_dump(void *ctx, optics_ts_t ts, const char *key, double value)
+static bool carbon_dump_normalized(
+        void *ctx, optics_ts_t ts, const char *key, double value)
 {
     struct carbon *carbon = ctx;
 
@@ -76,10 +77,19 @@ static void carbon_dump(void *ctx, optics_ts_t ts, const char *key, double value
     int ret = snprintf(buffer, sizeof(buffer), "%s %g %lu\n", key, value, ts);
     if (ret < 0 || (size_t) ret >= sizeof(buffer)) {
         optics_warn("skipping overly long carbon message: '%s'", buffer);
-        return;
+        return true;
     }
 
     carbon_send(carbon, buffer, ret, ts);
+    return true;
+}
+
+static void carbon_dump(
+        void *ctx, enum optics_poll_type type, const struct optics_poll *poll)
+{
+    if (type != optics_poll_metric) return;
+
+    (void) optics_poll_normalize(poll, carbon_dump_normalized, ctx);
 }
 
 static void carbon_free(void *ctx)
@@ -99,7 +109,7 @@ static void carbon_free(void *ctx)
 
 void optics_dump_carbon(struct optics_poller *poller, const char *host, const char *port)
 {
-    struct carbon *carbon = calloc(1, sizeof(struct carbon));
+    struct carbon *carbon = calloc(1, sizeof(*carbon));
     carbon->host = strdup(host);
     carbon->port = strdup(port);
 

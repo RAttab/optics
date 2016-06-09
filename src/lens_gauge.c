@@ -57,3 +57,11 @@ lens_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
 
     return optics_ok;
 }
+
+
+static bool
+lens_gauge_normalize(
+        const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
+{
+    return cb(ctx, poll->ts, poll->key->data, poll->value.gauge);
+}

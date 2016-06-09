@@ -10,12 +10,21 @@
 // backend
 // -----------------------------------------------------------------------------
 
-void backend_cb(void *ctx, uint64_t ts, const char *key, double value)
+bool backend_normalized_cb(void *ctx, uint64_t ts, const char *key, double value)
 {
     (void) ts;
 
     struct htable *keys = ctx;
     assert_true(htable_put(keys, key, pun_dtoi(value)).ok);
+
+    return true;
+}
+
+void backend_cb(void *ctx, enum optics_poll_type type, const struct optics_poll *poll)
+{
+    if (type != optics_poll_metric) return;
+
+    (void) optics_poll_normalize(poll, backend_normalized_cb, ctx);
 }
 
 
