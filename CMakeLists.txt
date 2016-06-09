@@ -161,6 +161,8 @@ optics_cmocka_test(lens_dist)
 optics_cmocka_test(poller)
 optics_cmocka_test(poller_lens)
 optics_cmocka_test(backend_carbon)
+optics_cmocka_test(backend_prometheus)
+optics_cmocka_test(backend_rest)
 optics_cmocka_test(crest)
 
 
