@@ -39,3 +39,4 @@
 #include "shm.c"
 #include "htable.c"
 #include "socket.c"
+#include "buffer.c"

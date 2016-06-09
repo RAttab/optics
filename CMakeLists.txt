@@ -151,6 +151,7 @@ endfunction()
 
 optics_cmocka_test(key)
 optics_cmocka_test(htable)
+optics_cmocka_test(buffer)
 optics_cmocka_test(region)
 optics_cmocka_test(timer)
 optics_cmocka_test(lens)
