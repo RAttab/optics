@@ -81,6 +81,8 @@ void http_req(struct http_client *client, const char *method, const char *path, 
         optics_fail_errno("send");
         optics_abort();
     }
+
+    buffer_reset(&buffer);
 }
 
 bool http_assert_resp(struct http_client *client, unsigned exp_code, const char *exp_body)

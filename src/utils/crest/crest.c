@@ -236,9 +236,7 @@ static void body_append(struct body *body, const char *data, size_t *len)
     *len = 0;
 }
 
-/* Avoids using the mhd post processor which adds support for multi-part
- * upload. This is not very well supported by our crest interface so we'll have
- * to revisit at a later point.
+/* \todo Should really be using the microhttpd MHD post processor.
  */
 static int microhttpd_cb(
         void *ctx,

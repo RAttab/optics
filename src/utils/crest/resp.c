@@ -6,6 +6,7 @@
 #pragma once
 
 #include "utils/htable.h"
+#include "utils/buffer.h"
 
 
 // -----------------------------------------------------------------------------
@@ -17,10 +18,7 @@ struct crest_resp
     struct MHD_Connection *conn;
 
     struct htable headers;
-
-    void *data;
-    size_t data_cap;
-    size_t data_len;
+    struct buffer body;
 };
 
 void crest_resp_free(struct crest_resp *resp)
@@ -28,6 +26,9 @@ void crest_resp_free(struct crest_resp *resp)
     struct htable_bucket *it = htable_next(&resp->headers, NULL);
     for (; it; it = htable_next(&resp->headers, it))
         free((char *) it->value);
+    htable_reset(&resp->headers);
+
+    buffer_reset(&resp->body);
 }
 
 void crest_resp_add_header(struct crest_resp *resp, const char *key, const char *value)
@@ -45,26 +46,21 @@ void crest_resp_add_header(struct crest_resp *resp, const char *key, const char 
 
 void crest_resp_write(struct crest_resp *resp, const void *body, size_t len)
 {
-    if (resp->data_cap < resp->data_len + len) {
-        if (!resp->data) resp->data = malloc(resp->data_cap = len);
-        else {
-            resp->data_cap = (resp->data_len + len) * 2;
-            resp->data = realloc(resp->data, resp->data_cap);
-        }
-    }
-
-    memcpy(resp->data + resp->data_len, body, len);
-    resp->data_len += len;
+    buffer_write(&resp->body, body, len);
 }
 
 static void crest_resp_send(struct crest_resp *resp, int code)
 {
     struct MHD_Response *mhd_resp = MHD_create_response_from_buffer(
-            resp->data_len, resp->data, MHD_RESPMEM_MUST_FREE);
+            resp->body.len, resp->body.data, MHD_RESPMEM_MUST_FREE);
     if (!mhd_resp) {
-        optics_fail("unable to create response of size '%lu'", resp->data_len);
+        optics_fail("unable to create response of size '%zu'", resp->body.len);
         optics_abort();
     }
+
+    // MHD_create_response_from_buffer takes ownership of the buffer's data so
+    // we should not free it.
+    resp->body = (struct buffer) {0};
 
     struct htable_bucket *it = htable_next(&resp->headers, NULL);
     for (; it; it = htable_next(&resp->headers, it)) {
