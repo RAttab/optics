@@ -72,11 +72,12 @@ void optics_dbg_abort_on_fail() { abort_on_fail = true; }
 
 void optics_vfail(const char *file, int line, const char *fmt, ...)
 {
+    optics_errno = (struct optics_error) { .errno_ = 0, .file = file, .line = line };
+
     va_list args;
     va_start(args, fmt);
-
-    optics_errno = (struct optics_error) { .errno_ = 0, .file = file, .line = line };
     (void) vsnprintf(optics_errno.msg, optics_err_msg_cap, fmt, args);
+    va_end(args);
 
     optics_backtrace(&optics_errno);
     if (abort_on_fail) optics_abort();
@@ -84,11 +85,12 @@ void optics_vfail(const char *file, int line, const char *fmt, ...)
 
 void optics_vfail_errno(const char *file, int line, const char *fmt, ...)
 {
+    optics_errno = (struct optics_error) { .errno_ = errno, .file = file, .line = line };
+
     va_list args;
     va_start(args, fmt);
-
-    optics_errno = (struct optics_error) { .errno_ = errno, .file = file, .line = line };
     (void) vsnprintf(optics_errno.msg, optics_err_msg_cap, fmt, args);
+    va_end(args);
 
     optics_backtrace(&optics_errno);
     if (abort_on_fail) optics_abort();
@@ -118,15 +120,20 @@ void optics_vwarn(const char *file, int line, const char *fmt, ...)
     va_start(args, fmt);
 
     optics_vwarn_va(file, line, fmt, args);
+
+    va_end(args);
 }
 
 void optics_vwarn_errno(const char *file, int line, const char *fmt, ...)
 {
-    va_list args;
-    va_start(args, fmt);
 
     struct optics_error err = { .errno_ = errno, .file = file, .line = line };
+
+    va_list args;
+    va_start(args, fmt);
     (void) vsnprintf(err.msg, optics_err_msg_cap, fmt, args);
+    va_end(args);
+
     optics_backtrace(&err);
 
     optics_perror(&err);
