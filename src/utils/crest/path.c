@@ -26,6 +26,7 @@ struct path
 static struct path *path_new(const char *raw)
 {
     struct path *path = calloc(1, sizeof(*path));
+    optics_assert_alloc(path);
 
     enum { max_path_len = 1024 };
     size_t raw_len = strnlen(raw, max_path_len);
@@ -38,7 +39,10 @@ static struct path *path_new(const char *raw)
         path->n++;
     }
 
-    if (path->n) path->items = malloc(path->n * sizeof(path->items[0]));
+    if (path->n) {
+        path->items = malloc(path->n * sizeof(path->items[0]));
+        optics_assert_alloc(path->items);
+    }
 
     size_t j = 0;
     for (size_t i = 0; i < raw_len; ++i) {

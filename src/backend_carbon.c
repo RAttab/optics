@@ -110,6 +110,7 @@ static void carbon_free(void *ctx)
 void optics_dump_carbon(struct optics_poller *poller, const char *host, const char *port)
 {
     struct carbon *carbon = calloc(1, sizeof(*carbon));
+    optics_assert_alloc(carbon);
     carbon->host = strdup(host);
     carbon->port = strdup(port);
 

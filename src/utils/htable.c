@@ -70,6 +70,8 @@ static void htable_resize(struct htable *ht, size_t cap)
     while (new_cap < cap) new_cap *= 2;
 
     struct htable_bucket *new_table = calloc(new_cap, sizeof(*new_table));
+    optics_assert_alloc(new_table);
+
     for (size_t i = 0; i < ht->cap; ++i) {
         struct htable_bucket *bucket = &ht->table[i];
         if (!bucket->key) continue;

@@ -91,3 +91,6 @@ void optics_vwarn_va(const char *file, int line, const char *fmt, va_list args);
         optics_fail("TODO: " msg);              \
         optics_abort();                         \
     } while (0)
+
+#define optics_assert_alloc(p)                  \
+    optics_assert((p) != NULL, "out-of-memory");

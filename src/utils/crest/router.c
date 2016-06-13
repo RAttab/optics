@@ -47,8 +47,8 @@ static struct router *router_append(struct router *router, const char *key)
 {
     if (router->len == router->cap) {
         router->cap = router->cap ? router->cap * 2 : 1;
-        router->consts = realloc(
-                router->consts, router->cap * sizeof(router->consts[0]));
+        router->consts = realloc(router->consts, router->cap * sizeof(router->consts[0]));
+        optics_assert_alloc(router->consts);
         memset(router->consts + router->len, 0,
                 (router->cap - router->len) * sizeof(router->consts[0]));
     }
@@ -78,8 +78,10 @@ static bool router_add(
 
     struct path tail = path_tail(path);
     if (path_token_type(head) == token_wildcard) {
-        if (!router->wildcards)
+        if (!router->wildcards) {
             router->wildcards = calloc(1, sizeof(*router->wildcards));
+            optics_assert_alloc(router->wildcards);
+        }
         return router_add(router->wildcards, &tail, res);
     }
 

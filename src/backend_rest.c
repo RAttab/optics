@@ -47,6 +47,7 @@ static struct metrics *metrics_append(struct metrics *metrics, const struct opti
 {
     if (!metrics) {
         metrics = malloc(sizeof(struct metrics) + sizeof(struct metric) * metrics_init_cap);
+        optics_assert_alloc(metrics);
         metrics->len = 0;
         metrics->cap = metrics_init_cap;
     }
@@ -54,6 +55,7 @@ static struct metrics *metrics_append(struct metrics *metrics, const struct opti
     if (metrics->len == metrics->cap) {
         metrics->cap *= 2;
         metrics = realloc(metrics, sizeof(struct metrics) + sizeof(struct metric) * metrics->cap);
+        optics_assert_alloc(metrics);
     }
 
     metrics->data[metrics->len] = (struct metric) {
@@ -212,6 +214,7 @@ static void rest_free(void *ctx)
 void optics_dump_rest(struct optics_poller *poller, struct crest *crest)
 {
     struct rest *rest = calloc(1, sizeof(*rest));
+    optics_assert_alloc(rest);
 
     crest_add(crest, (struct crest_res) {
                 .path = "/metrics/json",

@@ -55,7 +55,9 @@ struct crest
 
 struct crest *crest_new()
 {
-    return calloc(1, sizeof(struct crest));
+    struct crest *crest = calloc(1, sizeof(struct crest));
+    optics_assert_alloc(crest);
+    return crest;
 }
 
 void crest_free(struct crest *crest)
@@ -92,6 +94,7 @@ bool crest_add(struct crest *crest, struct crest_res raw_res)
     if (crest->started) return false;
 
     struct crest_res *res = malloc(sizeof(*res));
+    optics_assert_alloc(res);
     memcpy(res, &raw_res, sizeof(*res));
 
     struct path *path = path_new(res->path);
@@ -255,6 +258,8 @@ static int microhttpd_cb(
         if (content_length < 0) MHD_NO;
         if (content_length > 0) {
             *args = body = calloc(1, sizeof(*body) + content_length);
+            optics_assert_alloc(body);
+
             body->cap = content_length;
             if (!*data_len) return MHD_YES;
         }

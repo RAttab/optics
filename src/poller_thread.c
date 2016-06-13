@@ -51,6 +51,7 @@ struct optics_thread * optics_thread_start(struct optics_poller *poller, optics_
     }
 
     struct optics_thread *thread = calloc(1, sizeof(*thread));
+    optics_assert_alloc(thread);
     thread->poller = poller;
     thread->freq = freq;
 

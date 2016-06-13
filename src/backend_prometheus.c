@@ -93,6 +93,7 @@ static int64_t dist_count_value(struct prometheus *prometheus, const char *key) 
 static void record(struct prometheus *prometheus, const struct optics_poll *poll)
 {
     struct metric *metric = calloc(1, sizeof(*metric));
+    optics_assert_alloc(metric);
     metric->type = poll->type;
     metric->value = poll->value;
 
@@ -209,6 +210,7 @@ static void prometheus_free(void *ctx)
 void optics_dump_prometheus(struct optics_poller *poller, struct crest *crest)
 {
     struct prometheus *prometheus = calloc(1, sizeof(*prometheus));
+    optics_assert_alloc(prometheus);
 
     crest_add(crest, (struct crest_res) {
                 .path = "/metrics/prometheus",

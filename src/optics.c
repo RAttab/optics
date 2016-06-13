@@ -115,6 +115,7 @@ struct optics
 struct optics * optics_create_at(const char *name, optics_ts_t now)
 {
     struct optics *optics = calloc(1, sizeof(*optics));
+    optics_assert_alloc(optics);
 
     if (!region_create(&optics->region, name, sizeof(*optics->header)))
         goto fail_region;
@@ -145,6 +146,7 @@ struct optics * optics_create(const char *name)
 struct optics * optics_open(const char *name)
 {
     struct optics *optics = calloc(1, sizeof(*optics));
+    optics_assert_alloc(optics);
 
     if (!region_open(&optics->region, name)) goto fail_region;
 
@@ -375,6 +377,7 @@ struct optics_lens * optics_lens_get(struct optics *optics, const char *name)
         struct htable_ret ret = htable_get(&optics->keys, name);
         if (ret.ok) {
             lens = calloc(1, sizeof(*lens));
+            optics_assert_alloc(lens);
             lens->optics = optics;
             lens->lens = lens_ptr(optics, ret.value);
         }
@@ -404,6 +407,7 @@ optics_lens_alloc(struct optics *optics, struct lens *lens)
     }
 
     struct optics_lens *ol = calloc(1, sizeof(struct optics_lens));
+    optics_assert_alloc(ol);
     ol->optics = optics;
     ol->lens = lens;
     return ol;
@@ -425,6 +429,7 @@ optics_lens_alloc_get(struct optics *optics, struct lens *lens)
     }
 
     struct optics_lens *ol = calloc(1, sizeof(struct optics_lens));
+    optics_assert_alloc(ol);
     ol->optics = optics;
     ol->lens = lens;
     return ol;

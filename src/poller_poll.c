@@ -100,6 +100,8 @@ static void poller_poll_optics(
         struct optics_poller *poller, struct poller_list_item *item, optics_ts_t ts)
 {
     struct optics_key *key = calloc(1, sizeof(*key));
+    optics_assert_alloc(key);
+
     optics_key_push(key, optics_get_prefix(item->optics));
 
     struct poller_poll_ctx ctx = {

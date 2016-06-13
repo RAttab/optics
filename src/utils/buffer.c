@@ -35,6 +35,7 @@ void buffer_reserve(struct buffer *buffer, size_t len)
     buffer->data = buffer->data ?
         realloc(buffer->data, buffer->cap) :
         malloc(buffer->cap);
+    optics_assert_alloc(buffer->data);
 }
 
 void buffer_put(struct buffer *buffer, char c)

@@ -47,7 +47,9 @@ struct optics_poller
 
 struct optics_poller * optics_poller_alloc()
 {
-    return calloc(1, sizeof(struct optics_poller));
+    struct optics_poller *poller = calloc(1, sizeof(*poller));
+    optics_assert_alloc(poller);
+    return poller;
 }
 
 void optics_poller_free(struct optics_poller *poller)

@@ -262,6 +262,7 @@ static optics_off_t region_grow(struct region *region, size_t len)
     // region_ptr.
 
     struct region_vma *old = malloc(sizeof(*old));
+    optics_assert_alloc(old);
     *old = region->vma;
 
     int prot = PROT_READ | PROT_WRITE;
