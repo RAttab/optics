@@ -18,6 +18,13 @@ void optics_abort()
     abort();
 }
 
+void optics_error_exit()
+{
+    optics_perror(&optics_errno);
+    optics_log_dump();
+    exit(1);
+}
+
 
 size_t optics_strerror(struct optics_error *err, char *dest, size_t len)
 {

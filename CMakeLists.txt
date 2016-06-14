@@ -47,7 +47,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -std=gnu11 -pthread -D_GNU_SOURCE")
 
 include(FindPkgConfig)
 
-pkg_check_modules(MICROHTTPD REQUIRED libmicrohttpd)
+pkg_check_modules(MHD REQUIRED libmicrohttpd)
+pkg_check_modules(DAEMON REQUIRED libdaemon)
 
 # Not installed on prod machine and is therefore optional
 pkg_check_modules(CMOCKA cmocka)
@@ -89,8 +90,9 @@ function(optics_exec name dir)
     target_link_libraries(${name} optics_static rt bsd ${MICROHTTPD_LIBRARIES})
 endfunction()
 
-optics_exec(opticsd src)
 optics_exec(example test)
+optics_exec(opticsd src)
+target_link_libraries(opticsd ${DAEMON_LIBRARIES})
 
 
 #------------------------------------------------------------------------------#

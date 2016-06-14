@@ -16,6 +16,9 @@
 #include <unistd.h>
 #include <stdatomic.h>
 
+#include <libdaemon/dfork.h>
+#include <libdaemon/dpid.h>
+
 
 // -----------------------------------------------------------------------------
 // sigint
@@ -34,7 +37,7 @@ static void install_sigint()
     struct sigaction sa = { .sa_handler = sigint_handler };
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         optics_fail_errno("unable to install SIGINT handler\n");
-        optics_abort();
+        optics_error_exit();
     }
 }
 
@@ -61,6 +64,36 @@ static void parse_carbon(struct optics_poller *poller, const char *args)
     free(buffer);
 }
 
+static const char *daemon_pid_file(void)
+{
+    return "/var/run/opticsd.pid";
+}
+
+static void daemonize(void)
+{
+    daemon_pid_file_proc = daemon_pid_file;
+
+    pid_t pid = daemon_pid_file_is_running();
+    if (pid > 0) {
+        optics_fail_errno("daemon is already running on pid: %d", pid);
+        optics_error_exit();
+    }
+
+    pid = daemon_fork();
+    if (pid > 0) exit(0);
+    if (pid < 0) {
+        optics_fail_errno("unable to fork daemon");
+        optics_error_exit();
+    }
+
+    if (daemon_pid_file_create() < 0) {
+        optics_fail_errno("unable to create pid file");
+        optics_error_exit();
+    }
+
+    optics_syslog();
+}
+
 static void run_poller(struct optics_poller *poller, optics_ts_t freq)
 {
     if (!optics_poller_poll(poller)) optics_abort();
@@ -80,9 +113,9 @@ static void run_poller(struct optics_poller *poller, optics_ts_t freq)
 // main
 // -----------------------------------------------------------------------------
 
-static void print_usage(FILE *file)
+static void print_usage()
 {
-    fprintf(file,
+    fprintf(stdout,
             "Usage: \n"
             "  opticsd [--stdout] [--carbon=<host:port>]\n"
             "\n"
@@ -102,6 +135,7 @@ int main(int argc, char **argv)
     optics_ts_t freq = 10;
     unsigned http_port = 3002;
     bool backend_selected = false;
+    bool daemon = false;
 
     struct crest *crest = crest_new();
     optics_dump_rest(poller, crest);
@@ -113,6 +147,7 @@ int main(int argc, char **argv)
             {"dump-prometheus", no_argument, 0, 'p'},
             {"freq", required_argument, 0, 'f'},
             {"http-port", required_argument, 0, 'H'},
+            {"daemon", no_argument, 0, 'd'},
             {"help", no_argument, 0, 'h'},
             {0}
         };
@@ -124,18 +159,16 @@ int main(int argc, char **argv)
         case 'f':
             freq = atol(optarg);
             if (!freq) {
-                fprintf(stderr, "invalid freq argument: %s\n", optarg);
-                print_usage(stderr);
-                return EXIT_FAILURE;
+                optics_fail("invalid freq argument: %s", optarg);
+                optics_error_exit();
             }
             break;
 
         case 'H':
             http_port = atol(optarg);
             if (!http_port) {
-                fprintf(stderr, "invalid freq argument: %s\n", optarg);
-                print_usage(stderr);
-                return EXIT_FAILURE;
+                optics_fail("invalid http argument: %s", optarg);
+                optics_error_exit();
             }
 
         case 's':
@@ -153,25 +186,30 @@ int main(int argc, char **argv)
             optics_dump_prometheus(poller, crest);
             break;
 
+        case 'd':
+            daemon = true;
+            break;
+
         default:
-            fprintf(stderr, "unknown option '%c'\n", opt_char);
-            // fallthrough
+            optics_fail("unknown argument: %s", optarg);
+            optics_error_exit();
 
         case 'h':
-            print_usage(stdout);
-            return opt_char == 'h' ? EXIT_SUCCESS : EXIT_FAILURE;
+            print_usage();
+            return EXIT_SUCCESS;
         }
     }
 
     if (!backend_selected) {
-        fprintf(stderr, "No dump option selected.\n");
-        print_usage(stderr);
-        return EXIT_FAILURE;
+        optics_fail("No dump option selected");
+        optics_error_exit();
     }
 
-    crest_bind(crest, http_port);
+    if (daemon) daemonize();
 
+    crest_bind(crest, http_port);
     install_sigint();
+
     run_poller(poller, freq);
 
     return EXIT_SUCCESS;
