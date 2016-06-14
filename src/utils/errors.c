@@ -45,13 +45,24 @@ size_t optics_strerror(struct optics_error *err, char *dest, size_t len)
     return i;
 }
 
+static bool dump_to_syslog = false;
+
+void optics_syslog()
+{
+    openlog(NULL, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_USER);
+    dump_to_syslog = true;
+}
+
 void optics_perror(struct optics_error *err)
 {
     char buf[128 + optics_err_msg_cap + 80 * optics_err_backtrace_cap];
     size_t len = optics_strerror(err, buf, sizeof(buf));
 
-    if (write(2, buf, len) == -1)
-        fprintf(stderr, "optics_perror failed: %s", strerror(errno));
+    if (!dump_to_syslog) {
+        if (write(2, buf, len) == -1)
+            fprintf(stderr, "optics_perror failed: %s", strerror(errno));
+    }
+    else syslog(err->warning ? LOG_WARNING : LOG_ERR, "%s", buf);
 }
 
 
@@ -72,7 +83,8 @@ void optics_dbg_abort_on_fail() { abort_on_fail = true; }
 
 void optics_vfail(const char *file, int line, const char *fmt, ...)
 {
-    optics_errno = (struct optics_error) { .errno_ = 0, .file = file, .line = line };
+    optics_errno = (struct optics_error)
+        { .warning = false, .errno_ = 0, .file = file, .line = line };
 
     va_list args;
     va_start(args, fmt);
@@ -85,7 +97,8 @@ void optics_vfail(const char *file, int line, const char *fmt, ...)
 
 void optics_vfail_errno(const char *file, int line, const char *fmt, ...)
 {
-    optics_errno = (struct optics_error) { .errno_ = errno, .file = file, .line = line };
+    optics_errno = (struct optics_error)
+        { .warning = false, .errno_ = errno, .file = file, .line = line };
 
     va_list args;
     va_start(args, fmt);
@@ -106,7 +119,7 @@ void optics_dbg_abort_on_warn() { abort_on_warn = true; }
 
 void optics_vwarn_va(const char *file, int line, const char *fmt, va_list args)
 {
-    struct optics_error err = { .file = file, .line = line };
+    struct optics_error err = { .warning = true, .file = file, .line = line };
     (void) vsnprintf(err.msg, optics_err_msg_cap, fmt, args);
     optics_backtrace(&err);
 
@@ -127,7 +140,8 @@ void optics_vwarn(const char *file, int line, const char *fmt, ...)
 void optics_vwarn_errno(const char *file, int line, const char *fmt, ...)
 {
 
-    struct optics_error err = { .errno_ = errno, .file = file, .line = line };
+    struct optics_error err =
+        { .warning = true, .errno_ = errno, .file = file, .line = line };
 
     va_list args;
     va_start(args, fmt);

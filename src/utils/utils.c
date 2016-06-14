@@ -29,6 +29,7 @@
 #include <execinfo.h>
 #include <dirent.h>
 #include <netdb.h>
+#include <syslog.h>
 
 #include "log.c"
 #include "errors.c"
