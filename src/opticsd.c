@@ -46,6 +46,14 @@ static void install_sigint()
 // utils
 // -----------------------------------------------------------------------------
 
+#ifndef OPTICS_VERSION
+# error "missing OPTICS_VERSION"
+#endif
+
+#define stringify_impl(x) #x
+#define stringify(x) stringify_impl(x)
+#define optics_version_str() stringify(OPTICS_VERSION)
+
 static void parse_carbon(struct optics_poller *poller, const char *args)
 {
     char *buffer = strdup(args);
@@ -113,7 +121,7 @@ static void run_poller(struct optics_poller *poller, optics_ts_t freq)
 // main
 // -----------------------------------------------------------------------------
 
-static void print_usage()
+static void print_usage(void)
 {
     fprintf(stdout,
             "Usage: \n"
@@ -125,6 +133,7 @@ static void print_usage()
             "  --dump-prometheus          Enables prometheus HTTP interface\n"
             "  --freq=<n>                 Number of seconds between each polling attempt [10]\n"
             "  --http-port=<port>         Port for HTTP server [3002]\n"
+            "  -v --version               Optics verison\n"
             "  -h --help                  Prints this message\n");
 }
 
@@ -148,11 +157,12 @@ int main(int argc, char **argv)
             {"freq", required_argument, 0, 'f'},
             {"http-port", required_argument, 0, 'H'},
             {"daemon", no_argument, 0, 'd'},
+            {"version", no_argument, 0, 'v'},
             {"help", no_argument, 0, 'h'},
             {0}
         };
 
-        int opt_char = getopt_long(argc, argv, "h", options, NULL);
+        int opt_char = getopt_long(argc, argv, "vh", options, NULL);
         if (opt_char < 0) break;
 
         switch (opt_char) {
@@ -190,13 +200,17 @@ int main(int argc, char **argv)
             daemon = true;
             break;
 
-        default:
-            optics_fail("unknown argument: %s", optarg);
-            optics_error_exit();
+        case 'v':
+            fprintf(stdout,"opticsd v%s\n", optics_version_str());
+            return EXIT_SUCCESS;
 
         case 'h':
             print_usage();
             return EXIT_SUCCESS;
+
+        default:
+            optics_fail("unknown argument: %s", optarg);
+            optics_error_exit();
         }
     }
 

@@ -39,6 +39,7 @@ add_definitions("-Wno-missing-field-initializers")
 add_definitions("-Wno-format-nonliteral")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -std=gnu11 -pthread -D_GNU_SOURCE")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOPTICS_VERSION=\"${VERSION}\"")
 
 
 #------------------------------------------------------------------------------#
