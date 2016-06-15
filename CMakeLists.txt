@@ -67,32 +67,43 @@ include_directories("${PROJECT_SOURCE_DIR}/src")
 
 set(OPTICS_SOURCES
     src/optics.c
+    src/utils/utils.c)
+
+set(OPTICS_DEPS
+    optics_static
+    bsd
+    rt)
+
+add_library(optics_static STATIC ${OPTICS_SOURCES})
+add_library(optics SHARED ${OPTICS_SOURCES})
+target_link_libraries(optics ${MHD_LIBRARIES} bsd rt)
+
+
+set(OPTICS_POLLER_SOURCES
     src/poller.c
-    src/utils/utils.c
-    src/utils/crest/crest.c
     src/backend_stdout.c
     src/backend_carbon.c
     src/backend_rest.c
-    src/backend_prometheus.c)
+    src/backend_prometheus.c
+    src/utils/crest/crest.c)
 
-add_library(optics SHARED ${OPTICS_SOURCES})
-target_link_libraries(optics rt bsd ${MICROHTTPD_LIBRARIES})
+set(OPTICS_POLLER_DEPS
+    optics_poller_static
+    ${MHD_LIBRARIES}
+    ${OPTICS_DEPS})
 
-add_library(optics_static STATIC ${OPTICS_SOURCES})
+add_library(optics_poller_static STATIC ${OPTICS_POLLER_SOURCES})
 
 
 #------------------------------------------------------------------------------#
 # BINS
 #------------------------------------------------------------------------------#
 
-function(optics_exec name dir)
-    add_executable(${name} ${dir}/${name}.c)
-    target_link_libraries(${name} optics_static rt bsd ${MICROHTTPD_LIBRARIES})
-endfunction()
+add_executable(example test/example.c)
+target_link_libraries(example optics_static ${OPTICS_DEPS})
 
-optics_exec(example test)
-optics_exec(opticsd src)
-target_link_libraries(opticsd ${DAEMON_LIBRARIES})
+add_executable(opticsd src/opticsd.c)
+target_link_libraries(opticsd ${OPTICS_POLLER_DEPS} ${DAEMON_LIBRARIES})
 
 
 #------------------------------------------------------------------------------#
@@ -108,6 +119,7 @@ install(FILES src/optics.h DESTINATION include)
 
 set(pc_version ${VERSION})
 set(pc_prefix ${CMAKE_INSTALL_PREFIX})
+
 function(optics_pc name)
     configure_file(src/${name}.pc.in ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${name}.pc @ONLY)
     install(FILES ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${name}.pc DESTINATION lib/pkgconfig)
@@ -122,8 +134,8 @@ optics_pc(optics_static)
 #------------------------------------------------------------------------------#
 
 if(CMOCKA_FOUND)
-    add_library(optics_tests SHARED test/bench.c test/test.c)
-    target_link_libraries(optics_tests optics ${CMOCKA_LIBRARIES})
+    add_library(optics_tests STATIC test/bench.c test/test.c)
+    set(OPTICS_TESTS_DEPS optics_tests ${OPTICS_POLLER_DEPS} ${CMOCKA_LIBRARIES})
 endif()
 
 
@@ -138,7 +150,7 @@ endif()
 function(optics_cmocka_test name)
     if(CMOCKA_FOUND)
         add_executable(${name}_test test/${name}_test.c)
-        target_link_libraries(${name}_test optics_tests)
+        target_link_libraries(${name}_test ${OPTICS_TESTS_DEPS})
         set_property(TARGET ${name}_test APPEND PROPERTY COMPILE_OPTIONS ${CMOCKA_CFLAGS})
 
         add_test(${name}_test bin/${name}_test)
@@ -175,7 +187,7 @@ optics_cmocka_test(crest)
 function(optics_cmocka_bench name)
     if(CMOCKA_FOUND)
         add_executable(${name}_bench test/${name}_bench.c)
-        target_link_libraries(${name}_bench optics_tests)
+        target_link_libraries(${name}_bench optics_tests ${OPTICS_TESTS_DEPS})
         set_property(TARGET ${name}_bench APPEND PROPERTY COMPILE_OPTIONS ${CMOCKA_CFLAGS})
 
         add_test(${name}_bench bin/${name}_bench)
