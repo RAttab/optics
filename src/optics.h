@@ -32,6 +32,8 @@ typedef uint64_t optics_ts_t;
 
 struct optics_error
 {
+    bool warning;
+
     const char *file;
     int line;
 
