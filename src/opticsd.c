@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 
     if (daemon) daemonize();
 
-    crest_bind(crest, http_port);
+    if (!crest_bind(crest, http_port)) optics_abort();
     install_sigint();
 
     run_poller(poller, freq);
