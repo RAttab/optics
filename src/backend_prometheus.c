@@ -90,8 +90,25 @@ static int64_t dist_count_value(struct prometheus *prometheus, const char *key) 
 
 }
 
+// Prometheus considers dots to be some kind of satanic hell spawn which must be
+// extinguished in favour of less threatening and more kid friendly underscores.
+static void fix_key(char *dst, const char *src)
+{
+    size_t i = 0;
+
+    while(src[i] != '\0') {
+        dst[i] = src[i] == '.' ? '_' : src[i];
+        i++;
+    }
+
+    dst[i] = '\0';
+}
+
 static void record(struct prometheus *prometheus, const struct optics_poll *poll)
 {
+    char key[optics_name_max_len];
+    fix_key(key, poll->key->data);
+
     struct metric *metric = calloc(1, sizeof(*metric));
     optics_assert_alloc(metric);
     metric->type = poll->type;
@@ -99,17 +116,17 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
 
     switch (metric->type) {
     case optics_counter:
-        metric->value.counter += counter_value(prometheus, poll->key->data);
+        metric->value.counter += counter_value(prometheus, key);
         break;
     case optics_dist:
-        metric->value.dist.n += dist_count_value(prometheus, poll->key->data);
+        metric->value.dist.n += dist_count_value(prometheus, key);
         break;
     case optics_gauge: default: break;
     }
 
-    struct htable_ret ret = htable_put(&prometheus->build, poll->key->data, pun_ptoi(metric));
+    struct htable_ret ret = htable_put(&prometheus->build, key, pun_ptoi(metric));
     if (!ret.ok) {
-        optics_fail("unable to add duplicate key '%s'", poll->key->data);
+        optics_fail("unable to add duplicate key '%s'", key);
         optics_abort();
     }
 }
