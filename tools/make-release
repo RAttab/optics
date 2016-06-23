@@ -1,0 +1,43 @@
+#! /usr/bin/env bash
+#
+# Create the version release commit and tag it.
+#
+# >>> IT WILL NOT PUSH ANYTHING UPSTREAM <<<
+#
+
+set -eu -o pipefail
+
+die() {
+    if [ $# -eq 0 ]; then cat; else echo "$@"; fi
+    exit 1
+}
+
+usage() {
+    die <<USAGE
+Usage:
+  make-release <tag>
+USAGE
+}
+
+if [ $# -lt 1 -o $# -gt 1 ]; then usage; fi
+
+tagname="$1"
+
+if ! (echo "$tagname" | grep -q '^[0-9]\+\(\.[0-9]\+\)\{2\}\(rc[0-9]\+\)\?$'); then
+    die <<EOF
+$tagname must match the form <int>.<int>.<int>[rc<int>]
+(The v prefix for the git tag will be added by this tool.)
+EOF
+fi
+
+branch=$(git symbolic-ref --short -q HEAD)
+
+if [ "$branch" != master ]; then
+    die "You should be on master to make a release."
+fi
+
+
+sed -ri "s_^set\(VERSION [0-9]+\.[0-9]+\.[0-9]+\)\$_set(VERSION $tagname)_" CMakeLists.txt
+git add CMakeLists.txt
+git commit -m "Make $tagname release"
+git tag -a v$tagname
