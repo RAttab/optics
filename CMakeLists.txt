@@ -6,7 +6,7 @@
 
 cmake_minimum_required(VERSION 2.6)
 project(optics)
-set(VERSION 1.0.6)
+set(VERSION 1.0.8)
 
 enable_testing()
 
