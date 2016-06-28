@@ -64,8 +64,8 @@ void buffer_printf(struct buffer *buffer, const char *fmt, ...)
         va_end(args);
     }
 
-    if (ret > 0 && (size_t) ret > avail) {
-        buffer_reserve(buffer, buffer->len + ret);
+    if (ret > 0 && (size_t) (ret + 1) > avail) { // + 1 -> null byte
+        buffer_reserve(buffer, buffer->len + ret + 1); // + 1 -> null byte
         avail = buffer->cap - buffer->len;
 
         va_list args;

@@ -90,14 +90,24 @@ static int64_t dist_count_value(struct prometheus *prometheus, const char *key) 
 
 }
 
-// Prometheus considers dots to be some kind of satanic hell spawn which must be
-// extinguished in favour of less threatening and more kid friendly underscores.
+static bool is_valid_char(char c)
+{
+    return
+        (c >= 'a' && c <= 'z') ||
+        (c >= 'A' && c <= 'Z') ||
+        (c >= '0' && c <= '9') ||
+        (c == '_' || c == ':');
+}
+
+// Prometheus is very picky about which characters are allowed in a metric
+// name. Until we fix the optics interface to better support both carbon and
+// prometheus, we need to do some ugly character replacement instead.
 static void fix_key(char *dst, const char *src)
 {
     size_t i = 0;
 
     while(src[i] != '\0') {
-        dst[i] = src[i] == '.' ? '_' : src[i];
+        dst[i] = is_valid_char(src[i]) ? src[i] : '_';
         i++;
     }
 

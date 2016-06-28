@@ -17,7 +17,7 @@ optics_test_head(backend_prometheus_basics_test)
     const char *path = "/metrics/prometheus";
 
     struct optics *optics = optics_create(test_name);
-    optics_set_prefix(optics, "optics.tests");
+    optics_set_prefix(optics, "optics.tests-1");
 
     struct optics_lens *counter = optics_counter_alloc(optics, "counter");
     struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
@@ -37,17 +37,17 @@ optics_test_head(backend_prometheus_basics_test)
 
         char body[4096];
         snprintf(body, sizeof(body),
-                "# TYPE optics_tests_dist summary\n"
-                "optics_tests_dist{quantile=\"0.5\"} 50\n"
-                "optics_tests_dist{quantile=\"0.9\"} 90\n"
-                "optics_tests_dist{quantile=\"0.99\"} 99\n"
-                "optics_tests_dist_count %lu\n"
-                "# TYPE optics_tests_gauge gauge\n"
-                "optics_tests_gauge 1\n"
-                "# TYPE optics_tests_counter counter\n"
-                "optics_tests_counter %lu\n"
+                "# TYPE optics_tests_1_counter counter\n"
+                "optics_tests_1_counter %lu\n"
+                "# TYPE optics_tests_1_dist summary\n"
+                "optics_tests_1_dist{quantile=\"0.5\"} 50\n"
+                "optics_tests_1_dist{quantile=\"0.9\"} 90\n"
+                "optics_tests_1_dist{quantile=\"0.99\"} 99\n"
+                "optics_tests_1_dist_count %lu\n"
+                "# TYPE optics_tests_1_gauge gauge\n"
+                "optics_tests_1_gauge 1\n"
                 "\n",
-                (it + 1) * 100, (it + 1));
+                (it + 1), (it + 1) * 100);
 
         assert_http_body(port, "GET", path, 200, body);
     }

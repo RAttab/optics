@@ -93,6 +93,38 @@ void printf_test(void **state)
 
 
 // -----------------------------------------------------------------------------
+// printf boundary
+// -----------------------------------------------------------------------------
+
+void printf_boundary_test(void **state)
+{
+    (void) state;
+    struct buffer buffer = {0};
+
+    enum { n = 128 }; // must match buffer_min_cap
+    char data[n + 1] = {0};
+
+    for (size_t i = 0; i < n; ++i) data[i] = 'a';
+    buffer_printf(&buffer, "%s", data);
+
+    for (size_t i = 0; i < n;  ++i) data[i] = 'b';
+    buffer_printf(&buffer, "%s", data);
+
+    for (size_t i = 0; i < n;  ++i) data[i] = 'c';
+    buffer_printf(&buffer, "%s", data);
+
+    for (size_t i = 0; i < n; ++i)
+        assert_true(buffer.data[i] == 'a');
+
+    for (size_t i = 0; i < n; ++i)
+        assert_true(buffer.data[i + n] == 'b');
+
+    for (size_t i = 0; i < n; ++i)
+        assert_true(buffer.data[i + n + n] == 'c');
+}
+
+
+// -----------------------------------------------------------------------------
 // setup
 // -----------------------------------------------------------------------------
 
@@ -102,6 +134,7 @@ int main(void)
         cmocka_unit_test(put_test),
         cmocka_unit_test(write_test),
         cmocka_unit_test(printf_test),
+        cmocka_unit_test(printf_boundary_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
