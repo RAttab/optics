@@ -68,28 +68,36 @@ static void carbon_send(
 // callbacks
 // -----------------------------------------------------------------------------
 
-static bool carbon_dump_normalized(
-        void *ctx, optics_ts_t ts, const char *key, double value)
+struct dump_ctx
 {
-    struct carbon *carbon = ctx;
+    struct carbon *carbon;
+    const struct optics_poll *poll;
+};
+
+static bool carbon_dump_normalized(
+        void *ctx_, optics_ts_t ts, const char *key, double value)
+{
+    struct dump_ctx *ctx = ctx_;
 
     char buffer[512];
-    int ret = snprintf(buffer, sizeof(buffer), "%s %g %lu\n", key, value, ts);
+    int ret = snprintf(buffer, sizeof(buffer), "%s.%s.%s %g %lu\n",
+            ctx->poll->prefix, ctx->poll->host, key, value, ts);
     if (ret < 0 || (size_t) ret >= sizeof(buffer)) {
         optics_warn("skipping overly long carbon message: '%s'", buffer);
         return true;
     }
 
-    carbon_send(carbon, buffer, ret, ts);
+    carbon_send(ctx->carbon, buffer, ret, ts);
     return true;
 }
 
 static void carbon_dump(
-        void *ctx, enum optics_poll_type type, const struct optics_poll *poll)
+        void *ctx_, enum optics_poll_type type, const struct optics_poll *poll)
 {
     if (type != optics_poll_metric) return;
 
-    (void) optics_poll_normalize(poll, carbon_dump_normalized, ctx);
+    struct dump_ctx ctx = { .carbon = ctx_, .poll = poll };
+    (void) optics_poll_normalize(poll, carbon_dump_normalized, &ctx);
 }
 
 static void carbon_free(void *ctx)

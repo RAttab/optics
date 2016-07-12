@@ -14,6 +14,7 @@
 #include "utils/time.h"
 #include "utils/bits.h"
 #include "utils/log.h"
+#include "utils/socket.h"
 
 #include <assert.h>
 #include <string.h>
@@ -87,6 +88,7 @@ struct optics_packed optics_header
     atomic_off_t lens_head;
 
     char prefix[optics_name_max_len];
+    char host[optics_name_max_len];
 
     struct alloc alloc;
 };
@@ -107,6 +109,8 @@ struct optics
     struct htable keys;
 };
 
+static bool set_default_host(struct optics *optics);
+
 
 // -----------------------------------------------------------------------------
 // open/close
@@ -124,11 +128,14 @@ struct optics * optics_create_at(const char *name, optics_ts_t now)
     if (!optics->header) goto fail_header;
 
     if (!optics_set_prefix(optics, name)) goto fail_prefix;
+    if (!set_default_host(optics)) goto fail_host;
+
     alloc_init(&optics->header->alloc);
     optics->header->epoch_last_inc = now;
 
     return optics;
 
+  fail_host:
   fail_prefix:
   fail_header:
     region_close(&optics->region);
@@ -209,6 +216,30 @@ bool optics_set_prefix(struct optics *optics, const char *prefix)
     return true;
 }
 
+const char *optics_get_host(struct optics *optics)
+{
+    return optics->header->host;
+}
+
+bool optics_set_host(struct optics *optics, const char *host)
+{
+    if (strnlen(host, optics_name_max_len) == optics_name_max_len) {
+        optics_fail("host '%s' length is greater then max length '%d'",
+                host, optics_name_max_len);
+        return false;
+    }
+
+    strncpy(optics->header->host, host, optics_name_max_len);
+    return true;
+}
+
+static bool set_default_host(struct optics *optics)
+{
+    char host[optics_name_max_len];
+    if (!hostname(host, sizeof(host))) return false;
+
+    return optics_set_host(optics, host);
+}
 
 // -----------------------------------------------------------------------------
 // alloc

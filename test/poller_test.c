@@ -10,12 +10,24 @@
 // backend
 // -----------------------------------------------------------------------------
 
-bool backend_normalized_cb(void *ctx, uint64_t ts, const char *key, double value)
+struct backend_ctx
+{
+    struct htable *keys;
+    const struct  optics_poll *poll;
+};
+
+bool backend_normalized_cb(void *ctx_, uint64_t ts, const char *key_suffix, double value)
 {
     (void) ts;
 
-    struct htable *keys = ctx;
-    assert_true(htable_put(keys, key, pun_dtoi(value)).ok);
+    struct backend_ctx *ctx = ctx_;
+
+    struct optics_key key = {0};
+    optics_key_push(&key, ctx->poll->prefix);
+    optics_key_push(&key, ctx->poll->host);
+    optics_key_push(&key, key_suffix);
+
+    assert_true(htable_put(ctx->keys, key.data, pun_dtoi(value)).ok);
 
     return true;
 }
@@ -24,7 +36,8 @@ void backend_cb(void *ctx, enum optics_poll_type type, const struct optics_poll 
 {
     if (type != optics_poll_metric) return;
 
-    (void) optics_poll_normalize(poll, backend_normalized_cb, ctx);
+    struct backend_ctx norm_ctx = { .keys = ctx, .poll = poll};
+    (void) optics_poll_normalize(poll, backend_normalized_cb, &norm_ctx);
 }
 
 
@@ -62,6 +75,7 @@ optics_test_head(poller_multi_lens_test)
 
     struct optics *optics = optics_create_at(test_name, ts);
     optics_set_prefix(optics, "bleh");
+    optics_set_host(optics, "blah");
 
     struct optics_lens *g1 = optics_gauge_alloc(optics, "g1");
     struct optics_lens *g2 = optics_gauge_alloc(optics, "g2");
@@ -72,9 +86,9 @@ optics_test_head(poller_multi_lens_test)
     htable_reset(&result);
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0,
-            make_kv("bleh.g1", 0.0),
-            make_kv("bleh.g2", 1.0),
-            make_kv("bleh.g3", 1.2e-4));
+            make_kv("bleh.blah.g1", 0.0),
+            make_kv("bleh.blah.g2", 1.0),
+            make_kv("bleh.blah.g3", 1.2e-4));
 
     struct optics_lens *g4 = optics_gauge_alloc(optics, "g4");
     optics_lens_free(g1);
@@ -84,9 +98,9 @@ optics_test_head(poller_multi_lens_test)
     htable_reset(&result);
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0,
-            make_kv("bleh.g2", 2.0),
-            make_kv("bleh.g3", 1.2e-4),
-            make_kv("bleh.g4", -1.0));
+            make_kv("bleh.blah.g2", 2.0),
+            make_kv("bleh.blah.g3", 1.2e-4),
+            make_kv("bleh.blah.g4", -1.0));
 
     g1 = optics_gauge_alloc(optics, "g1");
     optics_gauge_set(g1, 1.0);
@@ -94,10 +108,10 @@ optics_test_head(poller_multi_lens_test)
     htable_reset(&result);
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0,
-            make_kv("bleh.g1", 1.0),
-            make_kv("bleh.g2", 2.0),
-            make_kv("bleh.g3", 1.2e-4),
-            make_kv("bleh.g4", -1.0));
+            make_kv("bleh.blah.g1", 1.0),
+            make_kv("bleh.blah.g2", 2.0),
+            make_kv("bleh.blah.g3", 1.2e-4),
+            make_kv("bleh.blah.g4", -1.0));
 
     optics_lens_close(g1);
     optics_lens_close(g2);
@@ -126,12 +140,15 @@ optics_test_head(poller_multi_region_test)
 
     optics_ts_t ts = 0;
     struct optics *r1 = optics_create_at("r1", ts);
+    optics_set_host(r1, "h1");
 
     struct optics *r2 = optics_create_at("r2", ts);
+    optics_set_host(r2, "h2");
     struct optics_lens *r2_l1 = optics_gauge_alloc(r2, "l1");
     optics_gauge_set(r2_l1, 1.0);
 
     struct optics *r3 = optics_create_at("r3", ts);
+    optics_set_host(r3, "h3");
     struct optics_lens *r3_l1 = optics_gauge_alloc(r3, "l1");
     struct optics_lens *r3_l2 = optics_gauge_alloc(r3, "l2");
     optics_gauge_set(r3_l1, 2.0);
@@ -140,24 +157,25 @@ optics_test_head(poller_multi_region_test)
     htable_reset(&result);
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0,
-            make_kv("r2.l1", 1.0),
-            make_kv("r3.l1", 2.0),
-            make_kv("r3.l2", 3.0));
+            make_kv("r2.h2.l1", 1.0),
+            make_kv("r3.h3.l1", 2.0),
+            make_kv("r3.h3.l2", 3.0));
 
     struct optics_lens *r1_l1 = optics_gauge_alloc(r1, "l1");
     optics_lens_close(r2_l1);
     optics_close(r2);
     struct optics *r4 = optics_create_at("r4", ts);
+    optics_set_host(r4, "h4");
     struct optics_lens *r4_l1 = optics_gauge_alloc(r4, "l1");
     optics_gauge_set(r4_l1, 10.0);
 
     htable_reset(&result);
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0,
-            make_kv("r1.l1", 0.0),
-            make_kv("r3.l1", 2.0),
-            make_kv("r3.l2", 3.0),
-            make_kv("r4.l1", 10.0));
+            make_kv("r1.h1.l1", 0.0),
+            make_kv("r3.h3.l1", 2.0),
+            make_kv("r3.h3.l2", 3.0),
+            make_kv("r4.h4.l1", 10.0));
 
     optics_lens_close(r1_l1);
     optics_close(r1);
@@ -191,6 +209,7 @@ optics_test_head(poller_freq_test)
     optics_ts_t ts = 0;
 
     struct optics *optics = optics_create_at("r", 20);
+    optics_set_host(optics, "h");
     struct optics_lens *lens = optics_counter_alloc(optics, "l");
 
     ts += 10;
@@ -201,7 +220,7 @@ optics_test_head(poller_freq_test)
     fprintf(stderr, "\n--- EXPECTED WARNING - START ---\n");
     htable_reset(&result);
     assert_true(optics_poller_poll_at(poller, ts));
-    assert_htable_equal(&result, 0, make_kv("r.l", 10));
+    assert_htable_equal(&result, 0, make_kv("r.h.l", 10));
     fprintf(stderr, "--- EXPECTED WARNING - END ---\n\n");
 
     ts += 10;
@@ -209,14 +228,14 @@ optics_test_head(poller_freq_test)
 
     htable_reset(&result);
     assert_true(optics_poller_poll_at(poller, ts));
-    assert_htable_equal(&result, 0, make_kv("r.l", 1));
+    assert_htable_equal(&result, 0, make_kv("r.h.l", 1));
 
     ts += 10;
     optics_counter_inc(lens, 10);
 
     htable_reset(&result);
     assert_true(optics_poller_poll_at(poller, ts));
-    assert_htable_equal(&result, 0, make_kv("r.l", 1));
+    assert_htable_equal(&result, 0, make_kv("r.h.l", 1));
 
     ts += 0; // not a mistake
     optics_counter_inc(lens, 10);
@@ -224,7 +243,7 @@ optics_test_head(poller_freq_test)
     // If the ts is 0 then elapsed is adjusted back to 1.
     htable_reset(&result);
     assert_true(optics_poller_poll_at(poller, ts));
-    assert_htable_equal(&result, 0, make_kv("r.l", 10));
+    assert_htable_equal(&result, 0, make_kv("r.h.l", 10));
 
     htable_reset(&result);
     optics_lens_close(lens);
