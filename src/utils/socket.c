@@ -42,3 +42,16 @@ int socket_stream_connect(const char *host, const char *port)
     optics_fail_errno("unable to connect stream socket for host '%s:%s'", host, port);
     return -1;
 }
+
+
+// -----------------------------------------------------------------------------
+// hostname
+// -----------------------------------------------------------------------------
+
+bool hostname(char *buffer, size_t len)
+{
+    if (!gethostname(buffer, len)) return true;
+
+    optics_fail_errno("unable to get the hostname");
+    return false;
+}

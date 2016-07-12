@@ -40,6 +40,7 @@ optics_test_head(external_test)
 
     struct optics *optics = optics_create(test_name);
     optics_set_prefix(optics, "optics.tests");
+    optics_set_host(optics, "my.host");
 
     struct optics_lens *lens = optics_dist_alloc(optics, "blah");
 
