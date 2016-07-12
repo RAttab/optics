@@ -121,6 +121,8 @@ void printf_boundary_test(void **state)
 
     for (size_t i = 0; i < n; ++i)
         assert_true(buffer.data[i + n + n] == 'c');
+
+    buffer_reset(&buffer);
 }
 
 
