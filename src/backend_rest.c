@@ -58,8 +58,12 @@ static struct metrics *metrics_append(struct metrics *metrics, const struct opti
         optics_assert_alloc(metrics);
     }
 
+    struct optics_key key = {0};
+    optics_key_push(&key, poll->host);
+    optics_key_push(&key, poll->key->data);
+
     metrics->data[metrics->len] = (struct metric) {
-        .key = strndup(poll->key->data, optics_name_max_len),
+        .key = strndup(key.data, optics_name_max_len),
         .type = poll->type,
         .value = poll->value,
     };
@@ -87,6 +91,8 @@ static void metrics_sort(struct metrics *metrics)
 
 struct rest
 {
+    struct optics_poller *poller;
+
     struct slock lock;
     struct metrics *current;
 

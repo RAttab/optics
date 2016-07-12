@@ -11,6 +11,8 @@
 #include "utils/type_pun.h"
 #include "utils/crest/crest.h"
 
+#include <string.h>
+
 
 // -----------------------------------------------------------------------------
 // prometheus
@@ -20,6 +22,7 @@ struct metric
 {
     enum optics_lens_type type;
     union optics_poll_value value;
+    char *host;
 };
 
 struct prometheus
@@ -33,8 +36,11 @@ struct prometheus
 static void free_table(struct htable *table)
 {
     struct htable_bucket *bucket = htable_next(table, NULL);
-    for (; bucket; bucket = htable_next(table, bucket))
-        free(pun_itop(bucket->value));
+    for (; bucket; bucket = htable_next(table, bucket)) {
+        struct metric *metric = pun_itop(bucket->value);
+        free(metric->host);
+        free(metric);
+    }
 
     htable_reset(table);
 }
@@ -90,6 +96,31 @@ static int64_t dist_count_value(struct prometheus *prometheus, const char *key) 
 
 }
 
+static void record(struct prometheus *prometheus, const struct optics_poll *poll)
+{
+    struct metric *metric = calloc(1, sizeof(*metric));
+    optics_assert_alloc(metric);
+    metric->type = poll->type;
+    metric->value = poll->value;
+    metric->host = strndup(poll->host, optics_name_max_len);
+
+    switch (metric->type) {
+    case optics_counter:
+        metric->value.counter += counter_value(prometheus, poll->key->data);
+        break;
+    case optics_dist:
+        metric->value.dist.n += dist_count_value(prometheus, poll->key->data);
+        break;
+    case optics_gauge: default: break;
+    }
+
+    struct htable_ret ret = htable_put(&prometheus->build, poll->key->data, pun_ptoi(metric));
+    if (!ret.ok) {
+        optics_fail("unable to add duplicate key '%s' for host '%s'", poll->key->data, poll->host);
+        optics_abort();
+    }
+}
+
 static bool is_valid_char(char c)
 {
     return
@@ -102,63 +133,43 @@ static bool is_valid_char(char c)
 // Prometheus is very picky about which characters are allowed in a metric
 // name. Until we fix the optics interface to better support both carbon and
 // prometheus, we need to do some ugly character replacement instead.
+//
+// Note: prometheus doesn't support unicode characters in keys.
 static void fix_key(char *dst, const char *src)
 {
-    size_t i = 0;
-
-    while(src[i] != '\0') {
-        dst[i] = is_valid_char(src[i]) ? src[i] : '_';
-        i++;
-    }
-
-    dst[i] = '\0';
+    for (; *src != '\0'; src++, dst++)
+        *dst = is_valid_char(*src) ? *src : '_';
+    *dst = '\0';
 }
 
-static void record(struct prometheus *prometheus, const struct optics_poll *poll)
+static void print_metric(struct buffer *buffer, const char *raw_key, const struct metric *metric)
 {
     char key[optics_name_max_len];
-    fix_key(key, poll->key->data);
-
-    struct metric *metric = calloc(1, sizeof(*metric));
-    optics_assert_alloc(metric);
-    metric->type = poll->type;
-    metric->value = poll->value;
+    fix_key(key, raw_key);
 
     switch (metric->type) {
     case optics_counter:
-        metric->value.counter += counter_value(prometheus, key);
-        break;
-    case optics_dist:
-        metric->value.dist.n += dist_count_value(prometheus, key);
-        break;
-    case optics_gauge: default: break;
-    }
-
-    struct htable_ret ret = htable_put(&prometheus->build, key, pun_ptoi(metric));
-    if (!ret.ok) {
-        optics_fail("unable to add duplicate key '%s'", key);
-        optics_abort();
-    }
-}
-
-static void print_metric(
-        struct buffer *buffer, const char *key, const struct metric *metric)
-{
-    switch (metric->type) {
-    case optics_counter:
-        buffer_printf(buffer, "# TYPE %s counter\n%s %ld\n", key, key, metric->value.counter);
+        buffer_printf(buffer, "# TYPE %s counter\n%s{host=\"%s\"} %ld\n",
+                key, key, metric->host, metric->value.counter);
         break;
 
     case optics_gauge:
-        buffer_printf(buffer, "# TYPE %s gauge\n%s %g\n", key, key, metric->value.gauge);
+        buffer_printf(buffer, "# TYPE %s gauge\n%s{host=\"%s\"} %g\n",
+                key, key, metric->host, metric->value.gauge);
         break;
 
     case optics_dist:
-        buffer_printf(buffer, "# TYPE %s summary\n", key);
-        buffer_printf(buffer, "%s{quantile=\"0.5\"} %g\n", key, metric->value.dist.p50);
-        buffer_printf(buffer, "%s{quantile=\"0.9\"} %g\n", key, metric->value.dist.p90);
-        buffer_printf(buffer, "%s{quantile=\"0.99\"} %g\n", key, metric->value.dist.p99);
-        buffer_printf(buffer, "%s_count %lu\n", key, metric->value.dist.n);
+        buffer_printf(buffer,
+                "# TYPE %s summary\n"
+                "%s{host=\"%s\", quantile=\"0.5\"} %g\n"
+                "%s{host=\"%s\", quantile=\"0.9\"} %g\n"
+                "%s{host=\"%s\", quantile=\"0.99\"} %g\n"
+                "%s_count{host=\"%s\"} %lu\n",
+                key,
+                key, metric->host, metric->value.dist.p50,
+                key, metric->host, metric->value.dist.p90,
+                key, metric->host, metric->value.dist.p99,
+                key, metric->host, metric->value.dist.n);
         break;
 
     default:
