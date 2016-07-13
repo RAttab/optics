@@ -32,7 +32,11 @@ struct poller_poll_ctx
 {
     struct optics_poller *poller;
     optics_epoch_t epoch;
+
+    const char *host;
+    const char *prefix;
     struct optics_key *key;
+
     optics_ts_t ts;
     optics_ts_t elapsed;
 };
@@ -50,6 +54,8 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
     size_t old_key = optics_key_push(ctx->key, optics_lens_name(lens));
 
     struct optics_poll poll = {
+        .host = ctx->host,
+        .prefix = ctx->prefix,
         .key = ctx->key,
         .type = optics_lens_type(lens),
         .ts = ctx->ts,
@@ -99,16 +105,14 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
 static void poller_poll_optics(
         struct optics_poller *poller, struct poller_list_item *item, optics_ts_t ts)
 {
-    struct optics_key *key = calloc(1, sizeof(*key));
-    optics_assert_alloc(key);
-
-    optics_key_push(key, optics_get_prefix(item->optics));
-
+    struct optics_key key = {0};
     struct poller_poll_ctx ctx = {
         .poller = poller,
-        .ts = ts,
-        .key = key,
         .epoch = item->epoch,
+        .host = optics_get_host(item->optics),
+        .prefix = optics_get_prefix(item->optics),
+        .key = &key,
+        .ts = ts,
     };
 
     if (ts > item->last_poll) ctx.elapsed = ts - item->last_poll;
@@ -120,8 +124,6 @@ static void poller_poll_optics(
     }
 
     (void) optics_foreach_lens(item->optics, &ctx, poller_poll_lens);
-
-    free(key);
 }
 
 static enum shm_ret poller_shm_cb(void *ctx, const char *name)

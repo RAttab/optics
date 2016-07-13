@@ -10,12 +10,24 @@
 // backend
 // -----------------------------------------------------------------------------
 
-bool backend_normalized_cb(void *ctx, uint64_t ts, const char *key, double value)
+struct backend_ctx
+{
+    struct htable *keys;
+    const struct  optics_poll *poll;
+};
+
+bool backend_normalized_cb(void *ctx_, uint64_t ts, const char *key_suffix, double value)
 {
     (void) ts;
 
-    struct htable *keys = ctx;
-    assert_true(htable_put(keys, key, pun_dtoi(value)).ok);
+    struct backend_ctx *ctx = ctx_;
+
+    struct optics_key key = {0};
+    optics_key_push(&key, ctx->poll->prefix);
+    optics_key_push(&key, ctx->poll->host);
+    optics_key_push(&key, key_suffix);
+
+    assert_true(htable_put(ctx->keys, key.data, pun_dtoi(value)).ok);
 
     return true;
 }
@@ -24,7 +36,8 @@ void backend_cb(void *ctx, enum optics_poll_type type, const struct optics_poll 
 {
     if (type != optics_poll_metric) return;
 
-    (void) optics_poll_normalize(poll, backend_normalized_cb, ctx);
+    struct backend_ctx norm_ctx = { .keys = ctx, .poll = poll};
+    (void) optics_poll_normalize(poll, backend_normalized_cb, &norm_ctx);
 }
 
 
@@ -43,9 +56,10 @@ optics_test_head(poller_gauge_test)
     struct optics *optics = optics_create_at(test_name, ts);
     struct optics_lens *gauge = optics_gauge_alloc(optics, "blah");
     optics_set_prefix(optics, "bleh");
+    optics_set_host(optics, "host");
 
     optics_poller_poll_at(poller, ++ts);
-    assert_htable_equal(&result, 0, make_kv("bleh.blah", 0.0));
+    assert_htable_equal(&result, 0, make_kv("bleh.host.blah", 0.0));
 
     for (size_t i = 0; i < 3; ++i) {
         ts++;
@@ -53,27 +67,27 @@ optics_test_head(poller_gauge_test)
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("bleh.blah", 1.0));
+        assert_htable_equal(&result, 0, make_kv("bleh.host.blah", 1.0));
 
         ts++;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("bleh.blah", 1.0));
+        assert_htable_equal(&result, 0, make_kv("bleh.host.blah", 1.0));
 
         ts++;
         optics_gauge_set(gauge, 1.34e-5);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 1e-7, make_kv("bleh.blah", 1.34e-5));
+        assert_htable_equal(&result, 1e-7, make_kv("bleh.host.blah", 1.34e-5));
 
         ts += 10;
         optics_gauge_set(gauge, 10.0);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("bleh.blah", 10.0));
+        assert_htable_equal(&result, 0.0, make_kv("bleh.host.blah", 10.0));
     }
 
     htable_reset(&result);
@@ -99,9 +113,10 @@ optics_test_head(poller_counter_test)
     struct optics *optics = optics_create_at(test_name, ts);
     struct optics_lens *counter = optics_counter_alloc(optics, "blah");
     optics_set_prefix(optics, "bleh");
+    optics_set_host(optics, "host");
 
     optics_poller_poll_at(poller, ++ts);
-    assert_htable_equal(&result, 0, make_kv("bleh.blah", 0.0));
+    assert_htable_equal(&result, 0, make_kv("bleh.host.blah", 0.0));
 
     for (size_t i = 0; i < 3; ++i) {
         ts++;
@@ -109,13 +124,13 @@ optics_test_head(poller_counter_test)
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("bleh.blah", 1.0));
+        assert_htable_equal(&result, 0, make_kv("bleh.host.blah", 1.0));
 
         ts++;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("bleh.blah", 0.0));
+        assert_htable_equal(&result, 0, make_kv("bleh.host.blah", 0.0));
 
         ts++;
         for (size_t j = 0; j < 10; ++j)
@@ -123,7 +138,7 @@ optics_test_head(poller_counter_test)
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("bleh.blah", 10.0));
+        assert_htable_equal(&result, 0.0, make_kv("bleh.host.blah", 10.0));
 
         ts++;
         for (size_t j = 0; j < 10; ++j)
@@ -131,7 +146,7 @@ optics_test_head(poller_counter_test)
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("bleh.blah", -10.0));
+        assert_htable_equal(&result, 0.0, make_kv("bleh.host.blah", -10.0));
 
         ts += 10;
         for (size_t j = 0; j < 20; ++j)
@@ -139,7 +154,7 @@ optics_test_head(poller_counter_test)
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("bleh.blah", 6.0));
+        assert_htable_equal(&result, 0.0, make_kv("bleh.host.blah", 6.0));
     }
 
     htable_reset(&result);
@@ -165,16 +180,17 @@ optics_test_head(poller_dist_test)
     struct optics *optics = optics_create_at(test_name, ts);
     struct optics_lens *dist = optics_dist_alloc(optics, "blah");
     optics_set_prefix(optics, "bleh");
+    optics_set_host(optics, "host");
 
     ts++;
 
     optics_poller_poll_at(poller, ts);
     assert_htable_equal(&result, 0,
-            make_kv("bleh.blah.count", 0.0),
-            make_kv("bleh.blah.p50", 0.0),
-            make_kv("bleh.blah.p90", 0.0),
-            make_kv("bleh.blah.p99", 0.0),
-            make_kv("bleh.blah.max", 0.0));
+            make_kv("bleh.host.blah.count", 0.0),
+            make_kv("bleh.host.blah.p50", 0.0),
+            make_kv("bleh.host.blah.p90", 0.0),
+            make_kv("bleh.host.blah.p99", 0.0),
+            make_kv("bleh.host.blah.max", 0.0));
 
     for (size_t i = 0; i < 3; ++i) {
         ts++;
@@ -183,22 +199,22 @@ optics_test_head(poller_dist_test)
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
         assert_htable_equal(&result, 0,
-                make_kv("bleh.blah.count", 1.0),
-                make_kv("bleh.blah.p50", 1.0),
-                make_kv("bleh.blah.p90", 1.0),
-                make_kv("bleh.blah.p99", 1.0),
-                make_kv("bleh.blah.max", 1.0));
+                make_kv("bleh.host.blah.count", 1.0),
+                make_kv("bleh.host.blah.p50", 1.0),
+                make_kv("bleh.host.blah.p90", 1.0),
+                make_kv("bleh.host.blah.p99", 1.0),
+                make_kv("bleh.host.blah.max", 1.0));
 
         ts++;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
         assert_htable_equal(&result, 0,
-                make_kv("bleh.blah.count", 0.0),
-                make_kv("bleh.blah.p50", 0.0),
-                make_kv("bleh.blah.p90", 0.0),
-                make_kv("bleh.blah.p99", 0.0),
-                make_kv("bleh.blah.max", 0.0));
+                make_kv("bleh.host.blah.count", 0.0),
+                make_kv("bleh.host.blah.p50", 0.0),
+                make_kv("bleh.host.blah.p90", 0.0),
+                make_kv("bleh.host.blah.p99", 0.0),
+                make_kv("bleh.host.blah.max", 0.0));
 
         ts++;
         for (size_t i = 0; i < 10; ++i)
@@ -207,11 +223,11 @@ optics_test_head(poller_dist_test)
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
         assert_htable_equal(&result, 0,
-                make_kv("bleh.blah.count", 10.0),
-                make_kv("bleh.blah.p50", 6.0),
-                make_kv("bleh.blah.p90", 10.0),
-                make_kv("bleh.blah.p99", 10.0),
-                make_kv("bleh.blah.max", 10.0));
+                make_kv("bleh.host.blah.count", 10.0),
+                make_kv("bleh.host.blah.p50", 6.0),
+                make_kv("bleh.host.blah.p90", 10.0),
+                make_kv("bleh.host.blah.p99", 10.0),
+                make_kv("bleh.host.blah.max", 10.0));
 
         ts += 5;
         for (size_t i = 0; i < 10; ++i)
@@ -220,11 +236,11 @@ optics_test_head(poller_dist_test)
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
         assert_htable_equal(&result, 0,
-                make_kv("bleh.blah.count", 2.0),
-                make_kv("bleh.blah.p50", 6.0),
-                make_kv("bleh.blah.p90", 10.0),
-                make_kv("bleh.blah.p99", 10.0),
-                make_kv("bleh.blah.max", 10.0));
+                make_kv("bleh.host.blah.count", 2.0),
+                make_kv("bleh.host.blah.p50", 6.0),
+                make_kv("bleh.host.blah.p90", 10.0),
+                make_kv("bleh.host.blah.p99", 10.0),
+                make_kv("bleh.host.blah.max", 10.0));
     }
 
     htable_reset(&result);
