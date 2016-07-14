@@ -8,10 +8,12 @@
 #include "utils/time.h"
 #include "utils/shm.h"
 #include "utils/log.h"
+#include "utils/socket.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <bsd/string.h>
 
 
 // -----------------------------------------------------------------------------
@@ -35,6 +37,8 @@ struct backend
 
 struct optics_poller
 {
+    char host[optics_name_max_len];
+    
     size_t backends_len;
     struct backend backends[poller_max_backends];
 };
@@ -49,7 +53,15 @@ struct optics_poller * optics_poller_alloc()
 {
     struct optics_poller *poller = calloc(1, sizeof(*poller));
     optics_assert_alloc(poller);
+
+
+    if (!hostname(poller->host, sizeof(poller->host))) goto fail_host; 
+    
     return poller;
+
+  fail_host:
+    free(poller);
+    return NULL;
 }
 
 void optics_poller_free(struct optics_poller *poller)
@@ -60,6 +72,28 @@ void optics_poller_free(struct optics_poller *poller)
     }
 
     free(poller);
+}
+
+
+// -----------------------------------------------------------------------------
+// host
+// -----------------------------------------------------------------------------
+
+const char *optics_poller_get_host(struct optics_poller *poller)
+{
+    return poller->host;
+}
+
+bool optics_poller_set_host(struct optics_poller *poller, const char *host)
+{
+    if (strnlen(host, optics_name_max_len) == optics_name_max_len) {
+        optics_fail("host '%s' length is greater than max length '%d'",
+                host, optics_name_max_len);
+        return false;
+    }
+
+    strlcpy(poller->host, host, optics_name_max_len);
+    return true;
 }
 
 

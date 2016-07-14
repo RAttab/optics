@@ -33,8 +33,8 @@ struct poller_poll_ctx
     struct optics_poller *poller;
     optics_epoch_t epoch;
 
-    const char *host;
     const char *prefix;
+    const char *source;
     struct optics_key *key;
 
     optics_ts_t ts;
@@ -54,8 +54,9 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
     size_t old_key = optics_key_push(ctx->key, optics_lens_name(lens));
 
     struct optics_poll poll = {
-        .host = ctx->host,
+        .host = optics_poller_get_host(ctx->poller),
         .prefix = ctx->prefix,
+        .source = ctx->source,
         .key = ctx->key,
         .type = optics_lens_type(lens),
         .ts = ctx->ts,
@@ -109,8 +110,8 @@ static void poller_poll_optics(
     struct poller_poll_ctx ctx = {
         .poller = poller,
         .epoch = item->epoch,
-        .host = optics_get_host(item->optics),
         .prefix = optics_get_prefix(item->optics),
+        .source = optics_get_source(item->optics),
         .key = &key,
         .ts = ts,
     };

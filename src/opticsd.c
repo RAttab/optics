@@ -133,6 +133,8 @@ static void print_usage(void)
             "  --dump-prometheus          Enables prometheus HTTP interface\n"
             "  --freq=<n>                 Number of seconds between each polling attempt [10]\n"
             "  --http-port=<port>         Port for HTTP server [3002]\n"
+            "  --hostname=<hostname>      Hostname to include in the key [gethostname()]\n"
+            "  --daemon                   Daemonizes the process\n"
             "  -v --version               Optics verison\n"
             "  -h --help                  Prints this message\n");
 }
@@ -156,6 +158,7 @@ int main(int argc, char **argv)
             {"dump-prometheus", no_argument, 0, 'p'},
             {"freq", required_argument, 0, 'f'},
             {"http-port", required_argument, 0, 'H'},
+            {"hostname", required_argument, 0, 'n'},
             {"daemon", no_argument, 0, 'd'},
             {"version", no_argument, 0, 'v'},
             {"help", no_argument, 0, 'h'},
@@ -194,6 +197,11 @@ int main(int argc, char **argv)
         case 'p':
             backend_selected = true;
             optics_dump_prometheus(poller, crest);
+            break;
+
+        case 'n':
+            if (!optics_poller_set_host(poller, optarg))
+                optics_error_exit();
             break;
 
         case 'd':

@@ -39,12 +39,12 @@ optics_test_head(external_test)
     if (!test_disconnects) assert_carbon();
 
     struct optics *optics = optics_create(test_name);
-    optics_set_prefix(optics, "optics.tests");
-    optics_set_host(optics, "my.host");
+    optics_set_prefix(optics, "prefix");
 
     struct optics_lens *lens = optics_dist_alloc(optics, "blah");
 
     struct optics_poller *poller = optics_poller_alloc();
+    optics_poller_set_host(poller, "host");
     optics_dump_carbon(poller, "127.0.0.1", "2003");
 
     size_t iterations = test_disconnects ? 10 * 1000 : 100;
