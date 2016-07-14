@@ -22,7 +22,6 @@ struct metric
 {
     enum optics_lens_type type;
     union optics_poll_value value;
-    char *host;
 };
 
 struct prometheus
@@ -36,11 +35,8 @@ struct prometheus
 static void free_table(struct htable *table)
 {
     struct htable_bucket *bucket = htable_next(table, NULL);
-    for (; bucket; bucket = htable_next(table, bucket)) {
-        struct metric *metric = pun_itop(bucket->value);
-        free(metric->host);
-        free(metric);
-    }
+    for (; bucket; bucket = htable_next(table, bucket))
+        free(pun_itop(bucket->value));
 
     htable_reset(table);
 }
@@ -123,7 +119,6 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
     optics_assert_alloc(metric);
     metric->type = poll->type;
     metric->value = poll->value;
-    metric->host = strndup(poll->host, optics_name_max_len);
 
     struct optics_key key = {0};
     optics_key_push(&key, poll->prefix);
@@ -142,7 +137,7 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
 
     struct htable_ret ret = htable_put(&prometheus->build, key.data, pun_ptoi(metric));
     if (!ret.ok) {
-        optics_fail("unable to add duplicate key '%s' for host '%s'", key.data, poll->host);
+        optics_fail("unable to add duplicate key '%s'", key.data);
         optics_abort();
     }
 }
@@ -151,27 +146,27 @@ static void print_metric(struct buffer *buffer, const char *key, const struct me
 {
     switch (metric->type) {
     case optics_counter:
-        buffer_printf(buffer, "# TYPE %s counter\n%s{host=\"%s\"} %ld\n",
-                key, key, metric->host, metric->value.counter);
+        buffer_printf(buffer, "# TYPE %s counter\n%s %ld\n",
+                key, key, metric->value.counter);
         break;
 
     case optics_gauge:
-        buffer_printf(buffer, "# TYPE %s gauge\n%s{host=\"%s\"} %g\n",
-                key, key, metric->host, metric->value.gauge);
+        buffer_printf(buffer, "# TYPE %s gauge\n%s %g\n",
+                key, key, metric->value.gauge);
         break;
 
     case optics_dist:
         buffer_printf(buffer,
                 "# TYPE %s summary\n"
-                "%s{host=\"%s\", quantile=\"0.5\"} %g\n"
-                "%s{host=\"%s\", quantile=\"0.9\"} %g\n"
-                "%s{host=\"%s\", quantile=\"0.99\"} %g\n"
-                "%s_count{host=\"%s\"} %lu\n",
+                "%s{quantile=\"0.5\"} %g\n"
+                "%s{quantile=\"0.9\"} %g\n"
+                "%s{quantile=\"0.99\"} %g\n"
+                "%s_count %lu\n",
                 key,
-                key, metric->host, metric->value.dist.p50,
-                key, metric->host, metric->value.dist.p90,
-                key, metric->host, metric->value.dist.p99,
-                key, metric->host, metric->value.dist.n);
+                key, metric->value.dist.p50,
+                key, metric->value.dist.p90,
+                key, metric->value.dist.p99,
+                key, metric->value.dist.n);
         break;
 
     default:

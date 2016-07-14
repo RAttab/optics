@@ -39,14 +39,14 @@ optics_test_head(backend_prometheus_basics_test)
         char body[4096];
         snprintf(body, sizeof(body),
                 "# TYPE optics_tests_1_counter counter\n"
-                "optics_tests_1_counter{host=\"my.host\"} %lu\n"
+                "optics_tests_1_counter %lu\n"
                 "# TYPE optics_tests_1_dist summary\n"
-                "optics_tests_1_dist{host=\"my.host\", quantile=\"0.5\"} 50\n"
-                "optics_tests_1_dist{host=\"my.host\", quantile=\"0.9\"} 90\n"
-                "optics_tests_1_dist{host=\"my.host\", quantile=\"0.99\"} 99\n"
-                "optics_tests_1_dist_count{host=\"my.host\"} %lu\n"
+                "optics_tests_1_dist{quantile=\"0.5\"} 50\n"
+                "optics_tests_1_dist{quantile=\"0.9\"} 90\n"
+                "optics_tests_1_dist{quantile=\"0.99\"} 99\n"
+                "optics_tests_1_dist_count %lu\n"
                 "# TYPE optics_tests_1_gauge gauge\n"
-                "optics_tests_1_gauge{host=\"my.host\"} 1\n"
+                "optics_tests_1_gauge 1\n"
                 "\n",
                 (it + 1), (it + 1) * 100);
 
