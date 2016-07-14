@@ -66,8 +66,8 @@ bool optics_unlink_all();
 const char *optics_get_prefix(struct optics *);
 bool optics_set_prefix(struct optics *, const char *prefix);
 
-const char *optics_get_host(struct optics *);
-bool optics_set_host(struct optics *, const char *host);
+const char *optics_get_source(struct optics *);
+bool optics_set_source(struct optics *, const char *source);
 
 
 // -----------------------------------------------------------------------------
@@ -175,6 +175,7 @@ struct optics_poll
 {
     const char *host;
     const char *prefix;
+    const char *source;
     struct optics_key *key;
 
     enum optics_lens_type type;
@@ -218,6 +219,9 @@ bool optics_poller_backend(
         void *ctx,
         optics_backend_cb_t cb,
         optics_backend_free_t free);
+
+bool optics_poller_set_host(struct optics_poller *poller, const char *host);
+const char * optics_poller_get_host(struct optics_poller *poller);
 
 bool optics_poller_poll(struct optics_poller *poller);
 bool optics_poller_poll_at(struct optics_poller *poller, optics_ts_t ts);

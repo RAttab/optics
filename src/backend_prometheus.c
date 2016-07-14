@@ -11,7 +11,9 @@
 #include "utils/type_pun.h"
 #include "utils/crest/crest.h"
 
+#include <stdio.h>
 #include <string.h>
+#include <bsd/string.h>
 
 
 // -----------------------------------------------------------------------------
@@ -22,7 +24,9 @@ struct metric
 {
     enum optics_lens_type type;
     union optics_poll_value value;
-    char *host;
+
+    struct optics_key key;
+    char source[optics_name_max_len];
 };
 
 struct prometheus
@@ -36,11 +40,8 @@ struct prometheus
 static void free_table(struct htable *table)
 {
     struct htable_bucket *bucket = htable_next(table, NULL);
-    for (; bucket; bucket = htable_next(table, bucket)) {
-        struct metric *metric = pun_itop(bucket->value);
-        free(metric->host);
-        free(metric);
-    }
+    for (; bucket; bucket = htable_next(table, bucket))
+        free(pun_itop(bucket->value));
 
     htable_reset(table);
 }
@@ -121,14 +122,22 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
 {
     struct metric *metric = calloc(1, sizeof(*metric));
     optics_assert_alloc(metric);
+
     metric->type = poll->type;
     metric->value = poll->value;
-    metric->host = strndup(poll->host, optics_name_max_len);
+    if (poll->source) strlcpy(metric->source, poll->source, optics_name_max_len);
 
+    optics_key_push(&metric->key, poll->prefix);
+    optics_key_push(&metric->key, poll->key->data);
+    fix_key(&metric->key);
+
+    // The duplicate key here is required because we have to diferentiate keys
+    // based on the source but we don't want the source to be in the key itself.
+    // It's pretty terrible but I can't think of a better solution at the moment.
     struct optics_key key = {0};
     optics_key_push(&key, poll->prefix);
     optics_key_push(&key, poll->key->data);
-    fix_key(&key);
+    if (poll->source) optics_key_push(&key, poll->source);
 
     switch (metric->type) {
     case optics_counter:
@@ -149,29 +158,39 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
 
 static void print_metric(struct buffer *buffer, const char *key, const struct metric *metric)
 {
+    (void) key;
+
+    char source_solo[optics_name_max_len + sizeof("{source=\"\"}")] = { [0] = '\0' };
+    char source_first[optics_name_max_len + sizeof("source=\"\",")] = { [0] = '\0' };
+
+    if (metric->source[0] != '\0') {
+        snprintf(source_solo, sizeof(source_solo), "{source=\"%s\"}", metric->source);
+        snprintf(source_first, sizeof(source_first), "source=\"%s\",", metric->source);
+    }
+
     switch (metric->type) {
     case optics_counter:
-        buffer_printf(buffer, "# TYPE %s counter\n%s{host=\"%s\"} %ld\n",
-                key, key, metric->host, metric->value.counter);
+        buffer_printf(buffer, "# TYPE %s counter\n%s%s %ld\n",
+                metric->key.data, metric->key.data, source_solo, metric->value.counter);
         break;
 
     case optics_gauge:
-        buffer_printf(buffer, "# TYPE %s gauge\n%s{host=\"%s\"} %g\n",
-                key, key, metric->host, metric->value.gauge);
+        buffer_printf(buffer, "# TYPE %s gauge\n%s%s %g\n",
+                metric->key.data, metric->key.data, source_solo, metric->value.gauge);
         break;
 
     case optics_dist:
         buffer_printf(buffer,
                 "# TYPE %s summary\n"
-                "%s{host=\"%s\", quantile=\"0.5\"} %g\n"
-                "%s{host=\"%s\", quantile=\"0.9\"} %g\n"
-                "%s{host=\"%s\", quantile=\"0.99\"} %g\n"
-                "%s_count{host=\"%s\"} %lu\n",
-                key,
-                key, metric->host, metric->value.dist.p50,
-                key, metric->host, metric->value.dist.p90,
-                key, metric->host, metric->value.dist.p99,
-                key, metric->host, metric->value.dist.n);
+                "%s{%squantile=\"0.5\"} %g\n"
+                "%s{%squantile=\"0.9\"} %g\n"
+                "%s{%squantile=\"0.99\"} %g\n"
+                "%s_count%s %lu\n",
+                metric->key.data,
+                metric->key.data, source_first, metric->value.dist.p50,
+                metric->key.data, source_first, metric->value.dist.p90,
+                metric->key.data, source_first, metric->value.dist.p99,
+                metric->key.data, source_solo, metric->value.dist.n);
         break;
 
     default:

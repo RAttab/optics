@@ -6,6 +6,7 @@
 #include "optics.h"
 #include "utils/errors.h"
 #include "utils/socket.h"
+#include "utils/buffer.h"
 
 #include <time.h>
 #include <stdio.h>
@@ -78,16 +79,15 @@ static bool carbon_dump_normalized(
         void *ctx_, optics_ts_t ts, const char *key, double value)
 {
     struct dump_ctx *ctx = ctx_;
+    struct buffer buffer = {0};
 
-    char buffer[512];
-    int ret = snprintf(buffer, sizeof(buffer), "%s.%s.%s %g %lu\n",
-            ctx->poll->prefix, ctx->poll->host, key, value, ts);
-    if (ret < 0 || (size_t) ret >= sizeof(buffer)) {
-        optics_warn("skipping overly long carbon message: '%s'", buffer);
-        return true;
-    }
+    buffer_printf(&buffer, "%s.%s", ctx->poll->prefix, ctx->poll->host);
+    if (ctx->poll->source) buffer_printf(&buffer, ".%s", ctx->poll->source);
+    buffer_printf(&buffer, ".%s %g %lu\n", key, value, ts);
 
-    carbon_send(ctx->carbon, buffer, ret, ts);
+    carbon_send(ctx->carbon, buffer.data, buffer.len, ts);
+    buffer_reset(&buffer);
+
     return true;
 }
 
