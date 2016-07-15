@@ -230,7 +230,8 @@ if(CLANG_TIDY_EXEC)
     message("CLANG-TIDY: ${CLANG_TIDY_EXEC}")
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     add_custom_target(clang-tidy
-        ${CLANG_TIDY_EXEC} -header-filter='.*' src/*.c src/utils/*.c test/*.c)
+        COMMAND ${CLANG_TIDY_EXEC} -p ${CMAKE_BINARY_DIR} -header-filter='.*' src/*.c src/utils/*.c test/*.c
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 else()
     message("CLANG-TIDY: DISABLED - install clang to enable")
 endif()
