@@ -11,7 +11,11 @@
 // -----------------------------------------------------------------------------
 
 int socket_stream_connect(const char *host, const char *port);
+int socket_stream_listen(const char *port);
+int socket_stream_accept(int fd);
 
+bool socket_send(int fd, size_t len, const void *data);
+ssize_t socket_recv(int fd, size_t len, void *data);
 
 // -----------------------------------------------------------------------------
 // hostname
