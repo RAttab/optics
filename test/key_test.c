@@ -26,7 +26,7 @@ optics_test_head(basics_test)
     optics_key_pop(&key, k);
     assert_string_equal(key.data, "blah.bleh");
 
-    k = optics_key_push(&key, "blyh");
+    optics_key_push(&key, "blyh");
     assert_string_equal(key.data, "blah.bleh.blyh");
 
     optics_key_pop(&key, j);
