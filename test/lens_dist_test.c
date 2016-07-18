@@ -58,6 +58,39 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
+// alloc_get
+// -----------------------------------------------------------------------------
+
+optics_test_head(lens_dist_alloc_get_test)
+{
+    struct optics *optics = optics_create(test_name);
+    const char *lens_name = "blah";
+
+    for (size_t i = 0; i < 3; ++i) {
+        struct optics_lens *l0 = optics_dist_alloc_get(optics, lens_name);
+        if (!l0) optics_abort();
+        for (size_t j = 1; j <= 50; ++j) optics_dist_record(l0, j);
+
+        struct optics_lens *l1 = optics_dist_alloc_get(optics, lens_name);
+        if (!l1) optics_abort();
+        for (size_t j = 1; j <= 50; ++j) optics_dist_record(l0, j + 50);
+
+        optics_epoch_t epoch = optics_epoch_inc(optics);
+
+        struct optics_dist value;
+        optics_dist_read(l0, epoch, &value);
+        assert_dist_equal(value, 100, 50, 90, 99, 100, 0);
+
+        optics_lens_close(l0);
+        optics_lens_free(l1);
+    }
+
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
 // record/read - exact
 // -----------------------------------------------------------------------------
 

@@ -35,6 +35,39 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
+// alloc_get
+// -----------------------------------------------------------------------------
+
+optics_test_head(lens_gauge_alloc_get_test)
+{
+    struct optics *optics = optics_create(test_name);
+    const char *lens_name = "blah";
+
+    for (size_t i = 0; i < 3; ++i) {
+        struct optics_lens *l0 = optics_gauge_alloc_get(optics, lens_name);
+        if (!l0) optics_abort();
+        optics_gauge_set(l0, 1);
+
+        struct optics_lens *l1 = optics_gauge_alloc_get(optics, lens_name);
+        if (!l1) optics_abort();
+        optics_gauge_set(l1, 2);
+
+        optics_epoch_t epoch = optics_epoch_inc(optics);
+
+        double value;
+        optics_gauge_read(l0, epoch, &value);
+        assert_float_equal(value, 2.0, 0.0);
+
+        optics_lens_close(l0);
+        optics_lens_free(l1);
+    }
+
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
 // record/read
 // -----------------------------------------------------------------------------
 
