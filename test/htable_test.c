@@ -131,6 +131,54 @@ void foreach_test(void **state)
 
 
 // -----------------------------------------------------------------------------
+// put
+// -----------------------------------------------------------------------------
+
+// Test used to make sure that our linear probing for puts fully completes
+// before we insert. In other words, if a hole is created in the middle of a
+// probing window and the item being inserted happens to be on the other side of
+// that hole then we shouldn't insert the item in the hole.
+//
+// Note that I don't really want to brute force a bunch of hash keys which would
+// be a pain in the case where we changed the hash function. Instead we just try
+// a bunch of keys and hope we hit the condition at least once.
+void put_test(void **state)
+{
+    (void) state;
+    enum { keys = 100 };
+
+    for (size_t iteration = 0; iteration < 100; ++iteration) {
+        struct htable ht = {0};
+
+        for (size_t i = 0; i < keys; ++i) {
+            char key[256];
+            snprintf(key, sizeof(key), "key-%lu", i * keys + iteration);
+
+            assert_true(htable_put(&ht, key, 10).ok);
+        }
+
+        // Create a hole.
+        {
+            char key[256];
+            snprintf(key, sizeof(key), "key-%lu", 0 * keys + iteration);
+
+            assert_htable_ret(htable_del(&ht, key), true, 10);
+        }
+
+        // Make sure that we can't insert keys that are already there.
+        for (size_t i = 1; i < keys; ++i) {
+            char key[256];
+            snprintf(key, sizeof(key), "key-%lu", i * keys + iteration);
+
+            assert_htable_ret(htable_put(&ht, key, 10), false, 10);
+        }
+
+        htable_reset(&ht);
+    }
+}
+
+
+// -----------------------------------------------------------------------------
 // setup
 // -----------------------------------------------------------------------------
 
@@ -140,6 +188,7 @@ int main(void)
         cmocka_unit_test(basics_test),
         cmocka_unit_test(resize_test),
         cmocka_unit_test(foreach_test),
+        cmocka_unit_test(put_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

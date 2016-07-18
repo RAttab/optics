@@ -120,6 +120,8 @@ struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
     uint64_t hash = hash_key(key);
     htable_resize(ht, probe_window);
 
+    struct htable_bucket *empty = NULL;
+
     for (size_t i = 0; i < probe_window; ++i) {
         struct htable_bucket *bucket = &ht->table[(hash + i) % ht->cap];
 
@@ -128,9 +130,13 @@ struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
             return (struct htable_ret) { .ok = false, .value = bucket->value };
         }
 
+        if (!empty) empty = bucket;
+    }
+
+    if (empty) {
         ht->len++;
-        bucket->key = strndup(key, htable_key_max_len);
-        bucket->value = value;
+        empty->key = strndup(key, htable_key_max_len);
+        empty->value = value;
         return (struct htable_ret) { .ok = true };
     }
 
