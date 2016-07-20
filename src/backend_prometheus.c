@@ -118,7 +118,8 @@ static void fix_key(struct optics_key *key)
     }
 }
 
-static void record(struct prometheus *prometheus, const struct optics_poll *poll)
+
+static struct metric * make_metric(const struct optics_poll *poll)
 {
     struct metric *metric = calloc(1, sizeof(*metric));
     optics_assert_alloc(metric);
@@ -131,13 +132,25 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
     optics_key_push(&metric->key, poll->key->data);
     fix_key(&metric->key);
 
-    // The duplicate key here is required because we have to diferentiate keys
-    // based on the source but we don't want the source to be in the key itself.
-    // It's pretty terrible but I can't think of a better solution at the moment.
+    return metric;
+}
+
+// To avoid collisions, the htable key must include the source. Since our
+// hash-table only supports strings, we need to build a new key with the source
+// in it.
+static void htable_key(struct optics_key *key, const struct optics_poll *poll)
+{
+    optics_key_push(key, poll->prefix);
+    optics_key_push(key, poll->key->data);
+    if (poll->source) optics_key_push(key, poll->source);
+}
+
+static void record(struct prometheus *prometheus, const struct optics_poll *poll)
+{
     struct optics_key key = {0};
-    optics_key_push(&key, poll->prefix);
-    optics_key_push(&key, poll->key->data);
-    if (poll->source) optics_key_push(&key, poll->source);
+    htable_key(&key, poll);
+
+    struct metric *metric = make_metric(poll);
 
     switch (metric->type) {
     case optics_counter:
@@ -158,7 +171,7 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
 
 static void print_metric(struct buffer *buffer, const char *key, const struct metric *metric)
 {
-    (void) key;
+    (void) key; // htable_key for why we ignore this param.
 
     char source_solo[optics_name_max_len + sizeof("{source=\"\"}")] = { [0] = '\0' };
     char source_first[optics_name_max_len + sizeof("source=\"\",")] = { [0] = '\0' };
