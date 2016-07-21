@@ -17,13 +17,20 @@ int shm_foreach(void *ctx, shm_foreach_cb_t cb)
     DIR *dir = opendir(shm_dir);
     if (!dir) {
         optics_fail_errno("unable to open '%s'", shm_dir);
-        optics_abort();
+        return shm_err;
     }
 
-    // \todo: use re-entrant readdir_r
-    struct dirent *entry;
+    struct dirent state, *entry;
     enum shm_ret ret;
-    while ((entry = readdir(dir))) {
+
+    while (true) {
+        int err = readdir_r(dir, &state, &entry);
+        if (err < 0) {
+            optics_fail_ierrno(err, "unable to iterate over shm folder");
+            goto fail_readdir;
+        }
+
+        if (!entry) break;
         if (entry->d_type != DT_REG) continue;
         if (memcmp(entry->d_name, shm_prefix, shm_prefix_len))
             continue;
@@ -35,4 +42,8 @@ int shm_foreach(void *ctx, shm_foreach_cb_t cb)
   done:
     closedir(dir);
     return ret;
+
+  fail_readdir:
+    closedir(dir);
+    return shm_err;
 }
