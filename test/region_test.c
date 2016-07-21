@@ -6,6 +6,10 @@
 #include "test.h"
 #include "utils/time.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
 
 // -----------------------------------------------------------------------------
 // open/close
@@ -24,6 +28,51 @@ optics_test_head(region_open_close_test)
 
         optics_close(reader);
         optics_close(writer);
+    }
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
+// header
+// -----------------------------------------------------------------------------
+
+static void region_write_header(const char *name, size_t offset)
+{
+    char shm[256];
+    snprintf(shm, sizeof(shm), "optics.%s", name);
+
+    int fd = shm_open(shm, O_RDWR, 0);
+    if (fd < 0) {
+        optics_fail_errno("unable to open shm '%s'", shm);
+        optics_abort();
+    }
+
+    const uint8_t value = 0xFF;
+    ssize_t ret = pwrite(fd, &value, sizeof(value), offset);
+    if (ret < 0) {
+        optics_fail_errno("unable to write header at offset '%zu'", offset);
+        optics_abort();
+    }
+
+    if (ret != sizeof(value)) {
+        optics_fail("unable to write header at offset '%zu': %zd != %zu",
+                offset, ret, sizeof(value));
+        optics_abort();
+    }
+
+    close(fd);
+}
+
+optics_test_head(region_header_test)
+{
+    for (size_t i = 0; i < sizeof(uint64_t) * 2; ++i) {
+        struct optics *optics = optics_create(test_name);
+
+        region_write_header(test_name, i);
+        assert_null(optics_open(test_name));
+
+        optics_close(optics);
     }
 }
 optics_test_tail()
@@ -232,6 +281,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(region_open_close_test),
+        cmocka_unit_test(region_header_test),
         cmocka_unit_test(region_unlink_test),
         cmocka_unit_test(region_prefix_test),
         cmocka_unit_test(region_epoch_test),

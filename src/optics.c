@@ -47,6 +47,9 @@ typedef atomic_size_t atomic_optics_epoch_t;
 static const size_t page_len = 4096UL;
 static const size_t cache_line_len = 64UL;;
 
+static const uint64_t magic = 0x044b33f12afe7de0UL;
+static const uint64_t version = 1;
+
 
 // -----------------------------------------------------------------------------
 // impl
@@ -82,6 +85,9 @@ struct optics_packed optics_defer
 
 struct optics_packed optics_header
 {
+    uint64_t magic;
+    uint64_t version;
+
     atomic_size_t epoch;
     optics_ts_t epoch_last_inc;
     atomic_off_t epoch_defers[2];
@@ -128,6 +134,9 @@ struct optics * optics_create_at(const char *name, optics_ts_t now)
     optics->header = region_ptr_unsafe(&optics->region, 0, sizeof(*optics->header));
     if (!optics->header) goto fail_header;
 
+    optics->header->magic = magic;
+    optics->header->version = version;
+
     if (!optics_set_prefix(optics, name)) goto fail_prefix;
     if (!set_default_host(optics)) goto fail_host;
 
@@ -161,8 +170,21 @@ struct optics * optics_open(const char *name)
     optics->header = region_ptr(&optics->region, 0, sizeof(*optics->header));
     if (!optics->header) goto fail_header;
 
+    if (optics->header->magic != magic) {
+        optics_fail("invalid magic: %p != %p", (void *) optics->header->magic, (void *) magic);
+        goto fail_magic;
+    }
+
+    if (optics->header->version != version) {
+        optics_fail("invalid version: %lu != %lu", optics->header->version, version);
+        goto fail_version;
+    }
+
+
     return optics;
 
+  fail_version:
+  fail_magic:
   fail_header:
     region_close(&optics->region);
 
@@ -638,4 +660,3 @@ bool optics_poll_normalize(
         return false;
     }
 }
-
