@@ -10,6 +10,7 @@ Dependencies:
 - cmake
 - librt
 - libbsd
+- libmicrohttpd
 
 Optional Dependencies:
 - ninja (faster then `gmake`)
@@ -26,8 +27,16 @@ ninja test
 sudo ninja install
 ```
 
-Options:
+Out-of-source build (recommended for devs):
+```
+mkdir build
+(cd build; cmake .. -G Ninja)
+ninja -C build
+ninja -C build test
+sudo ninja -C build install
+```
 
+Options:
 - `cmake . -G Ninja`: use ninja which is generally faster then gmake
 - `cmake . -DENABLE_UBSAN=ON`: compile with the gcc undefined behaviour sanitizer
 - `cmake . -DCMAKE_INSTALL_PREFIX=/path/to/install`: where files should be
@@ -40,21 +49,29 @@ Options:
 
 ### Usage
 
-To log metrics refer to this [example](test/example.c) which describes all the
-basics.
+To log metrics refer to this [example](test/example.c) which describes the
+basics of creating and logging metrics.
 
-Polling can be done using the `opticsd` binary like so:
+Polling metrics is accomplished by running the `opticsd` daemon which will
+automatically pick-up any newly created optics instances and start dumping them
+to its configured backends. The following is a simple example for running the
+daemon:
 
 ```
-	opticsd --freq=10 --dump-stdout --dump-carbon=127.0.0.1:2003
+	opticsd --freq=10 --http-port=3002 --dump-prometheus --dump-carbon=127.0.0.1:2003
 ```
 
-The daemon will automatically pick-up any newly created optics instances and
-start dumping them to its configured backends. Use the `--help` argument for
-more details.
+Use the `--help` argument for more options.
 
+The daemon also has a simple HTTP interface to dump the current set of available
+values and can be queried like so:
+
+```
+curl -s localhost:3002/metrics/json
+```
 
 ### Pre-emptive Nit-picking
 
-* Assumes amd64.
-* Not POSIX compliant.
+* Assumes amd64
+* Not 100% POSIX compliant
+* Only Linux is supported
