@@ -102,11 +102,14 @@ add_library(optics_poller_static STATIC ${OPTICS_POLLER_SOURCES})
 # BINS
 #------------------------------------------------------------------------------#
 
+add_executable(opticsd src/opticsd.c)
+target_link_libraries(opticsd ${OPTICS_POLLER_DEPS} ${DAEMON_LIBRARIES})
+
 add_executable(example test/example.c)
 target_link_libraries(example optics_static ${OPTICS_DEPS})
 
-add_executable(opticsd src/opticsd.c)
-target_link_libraries(opticsd ${OPTICS_POLLER_DEPS} ${DAEMON_LIBRARIES})
+add_executable(prometheus_stress test/prometheus_stress_test.c)
+target_link_libraries(prometheus_stress ${OPTICS_POLLER_DEPS})
 
 
 #------------------------------------------------------------------------------#
