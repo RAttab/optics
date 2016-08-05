@@ -58,6 +58,18 @@ bool nsleep(uint64_t nanos)
     }
 }
 
+bool nsleep_until(struct timespec *ts)
+{
+    while (true) {
+        int ret = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, ts, NULL);
+        if (!ret) return true;
+        if (errno != EINTR) continue;
+
+        optics_fail_errno("unable to sleep via clock_nanosleep");
+        return false;
+    }
+}
+
 void yield()
 {
     sched_yield();

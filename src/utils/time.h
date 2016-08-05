@@ -40,4 +40,5 @@ inline void clock_monotonic(struct timespec *ts)
 // -----------------------------------------------------------------------------
 
 bool nsleep(uint64_t nanos);
+bool nsleep_until(struct timespec *ts);
 void yield();
