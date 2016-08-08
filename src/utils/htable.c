@@ -14,22 +14,6 @@ enum { probe_window = 8 };
 
 
 // -----------------------------------------------------------------------------
-// utils
-// -----------------------------------------------------------------------------
-
-// FNV-1 hash implementation
-static uint64_t hash_key(const char *key)
-{
-    static const uint64_t prime = 0x100000001b3;
-
-    uint64_t hash = 0xcbf29ce484222325;
-    for (size_t i = 0; i < strnlen(key, htable_key_max_len); ++i)
-        hash = (hash * prime) ^ key[i];
-    return hash;
-}
-
-
-// -----------------------------------------------------------------------------
 // basics
 // -----------------------------------------------------------------------------
 
@@ -48,7 +32,7 @@ static bool table_put(
         struct htable_bucket *table, size_t cap,
         const char *key, uint64_t value)
 {
-    uint64_t hash = hash_key(key);
+    uint64_t hash = htable_hash(key);
 
     for (size_t i = 0; i < probe_window; ++i) {
         struct htable_bucket *bucket = &table[(hash + i) % cap];
@@ -100,7 +84,7 @@ void htable_reserve(struct htable *ht, size_t items)
 
 struct htable_ret htable_get(struct htable *ht, const char *key)
 {
-    uint64_t hash = hash_key(key);
+    uint64_t hash = htable_hash(key);
     htable_resize(ht, probe_window);
 
     for (size_t i = 0; i < probe_window; ++i) {
@@ -117,7 +101,7 @@ struct htable_ret htable_get(struct htable *ht, const char *key)
 
 struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
 {
-    uint64_t hash = hash_key(key);
+    uint64_t hash = htable_hash(key);
     htable_resize(ht, probe_window);
 
     struct htable_bucket *empty = NULL;
@@ -146,7 +130,7 @@ struct htable_ret htable_put(struct htable *ht, const char *key, uint64_t value)
 
 struct htable_ret htable_xchg(struct htable *ht, const char *key, uint64_t value)
 {
-    uint64_t hash = hash_key(key);
+    uint64_t hash = htable_hash(key);
     htable_resize(ht, probe_window);
 
     for (size_t i = 0; i < probe_window; ++i) {
@@ -168,7 +152,7 @@ struct htable_ret htable_xchg(struct htable *ht, const char *key, uint64_t value
 
 struct htable_ret htable_del(struct htable *ht, const char *key)
 {
-    uint64_t hash = hash_key(key);
+    uint64_t hash = htable_hash(key);
     htable_resize(ht, probe_window);
 
     for (size_t i = 0; i < probe_window; ++i) {

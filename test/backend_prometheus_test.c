@@ -39,8 +39,6 @@ optics_test_head(backend_prometheus_with_source_test)
 
         char body[4096];
         snprintf(body, sizeof(body),
-                "# TYPE __optics_counter counter\n"
-                "__optics_counter{source=\".-source\"} %lu\n"
                 "# TYPE __optics_dist summary\n"
                 "__optics_dist{source=\".-source\",quantile=\"0.5\"} 50\n"
                 "__optics_dist{source=\".-source\",quantile=\"0.9\"} 90\n"
@@ -48,8 +46,10 @@ optics_test_head(backend_prometheus_with_source_test)
                 "__optics_dist_count{source=\".-source\"} %lu\n"
                 "# TYPE __optics_gauge gauge\n"
                 "__optics_gauge{source=\".-source\"} 1\n"
+                "# TYPE __optics_counter counter\n"
+                "__optics_counter{source=\".-source\"} %lu\n"
                 "\n",
-                (it + 1), (it + 1) * 100);
+                (it + 1) * 100, (it + 1));
 
         assert_http_body(port, "GET", path, 200, body);
     }
