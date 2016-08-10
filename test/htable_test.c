@@ -5,6 +5,8 @@
 
 #include "test.h"
 
+#include <x86intrin.h>
+
 
 // -----------------------------------------------------------------------------
 // utils
@@ -179,6 +181,90 @@ void put_test(void **state)
 
 
 // -----------------------------------------------------------------------------
+// hash test
+// -----------------------------------------------------------------------------
+
+// Bad hash distributions tend to cause table resize blow up with very similar
+// keys.
+void htable_dist_test(void **state)
+{
+    (void) state;
+    struct htable ht = {0};
+
+    const uint64_t keys = 10 * 1000;
+    htable_reserve(&ht, keys);
+    const uint64_t cap = ht.cap;
+
+    for (size_t i = 0; i < keys; ++i) {
+        char key[optics_name_max_len];
+        snprintf(key, sizeof(key), "counter-%lu", i);
+        assert_true(htable_put(&ht, key, i).ok);
+    }
+
+    assert_int_equal(ht.cap, cap);
+
+    htable_reset(&ht);
+}
+
+uint16_t larsons_hash(uint64_t key)
+{
+    uint32_t h = 0xdeadbeef;
+    uint8_t *s = (uint8_t *)&key;
+    enum { M = 101 };
+    h = h * M + *s++;
+    h = h * M + *s++;
+    h = h * M + *s++;
+    h = h * M + *s++;
+    h = h * M + *s++;
+    h = h * M + *s++;
+    h = h * M + *s++;
+    return h ^ (h>>16);
+}
+
+static uint16_t hash_1(size_t n, uint64_t key)
+{
+    return (larsons_hash(key) & ((n>>1)-1))<<1;
+}
+
+static uint16_t hash_2(size_t n, uint64_t key)
+{
+    uint32_t h;
+    h = _mm_crc32_u64(-1, key);
+    h ^= (h>>16);
+    return 1 + ((h & ((n>>1)-1))<<1);
+}
+
+// Fancy metric to calculate if our hash function doesn't suck.
+void hash_quality_test(void **state)
+{
+    (void) state;
+
+    enum { len = 1024 };
+    uint64_t bins[3][len] = {0};
+
+    for (size_t i = 0; i < len; ++i) {
+        char key[optics_name_max_len];
+        snprintf(key, sizeof(key), "counter-%lu", i);
+
+        uint64_t hash = htable_hash(key);
+        bins[0][hash_1(len << 1, hash) >> 1] += 1;
+        bins[1][hash_2(len << 1, hash) >> 1] += 1;
+        bins[2][hash % len] += 1;
+    }
+
+    for (size_t j = 0; j < 3; ++j) {
+        double sum = 0.0;
+        for (size_t i = 0; i < len; ++i)
+            sum += (bins[j][i] * (bins[j][i] + 1.0)) / 2.0;
+        double quality = sum / (1.5 * (double) len - 0.5);
+
+        printf("quality(fnv-1, %lu): %f\n", j, quality);
+        assert_true(quality > 0.5 && quality < 1.05);
+    }
+}
+
+
+// -----------------------------------------------------------------------------
 // setup
 // -----------------------------------------------------------------------------
 
@@ -189,6 +275,8 @@ int main(void)
         cmocka_unit_test(resize_test),
         cmocka_unit_test(foreach_test),
         cmocka_unit_test(put_test),
+        cmocka_unit_test(hash_quality_test),
+        cmocka_unit_test(htable_dist_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
