@@ -136,9 +136,7 @@ struct htable_ret htable_xchg(struct htable *ht, const char *key, uint64_t value
     for (size_t i = 0; i < probe_window; ++i) {
         struct htable_bucket *bucket = &ht->table[(hash + i) % ht->cap];
 
-        if (!bucket->key)
-            return (struct htable_ret) { .ok = false, .value = bucket->value };
-
+        if (!bucket->key) continue;
         if (strncmp(bucket->key, key, htable_key_max_len)) continue;
 
         uint64_t old_value = bucket->value;
@@ -146,8 +144,7 @@ struct htable_ret htable_xchg(struct htable *ht, const char *key, uint64_t value
         return (struct htable_ret) { .ok = true, .value = old_value };
     }
 
-    htable_resize(ht, ht->cap * 2);
-    return htable_put(ht, key, value);
+    return (struct htable_ret) { .ok = false };
 }
 
 struct htable_ret htable_del(struct htable *ht, const char *key)
