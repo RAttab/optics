@@ -13,6 +13,9 @@
 #include <stdlib.h>
 #include <limits.h>
 
+#if MHD_VERSION < 0x00095009
+#define MHD_USE_EPOLL MHD_USE_EPOLL_LINUX_ONLY
+#endif
 
 // -----------------------------------------------------------------------------
 // implementation
@@ -71,7 +74,7 @@ bool crest_bind(struct crest *crest, int port)
 {
     int flags = 0;
     flags |= MHD_USE_SELECT_INTERNALLY;
-    flags |= MHD_USE_EPOLL_LINUX_ONLY;
+    flags |= MHD_USE_EPOLL;
 
     crest->mhd_daemon = MHD_start_daemon(
             flags, port, NULL, NULL, microhttpd_cb, crest,
