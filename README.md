@@ -8,7 +8,6 @@ external agent.
 
 Dependencies:
 - cmake
-- librt
 - libbsd
 - libmicrohttpd
 
@@ -16,7 +15,7 @@ Optional Dependencies:
 - ninja (faster then `gmake`)
 - cmocka (tests are disabled if not present)
 - valgrind (run with `ctest -V . -L valgrind`)
-- ubsan (enable via `cmake -DENABLE_UBSAN`)
+- ubsan (part of clang - enabled via `cmake -DENABLE_UBSAN`)
 - clang-tidy (run with `ninja clang-tidy`)
 
 Building:
