@@ -23,6 +23,7 @@ struct htable_bench
 name_t * make_names(size_t len)
 {
     name_t *names = malloc(len * sizeof(name_t));
+    optics_assert_alloc(names);
 
     for (size_t i = 0; i < len; ++i)
         snprintf(names[i], sizeof(names[i]), "key-%lu", i);
@@ -93,7 +94,7 @@ void run_put_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 
 void put_bench_st(optics_unused void **state)
 {
-    enum { max_len = 10000000 };
+    enum { max_len = 100000 };
     name_t *names = make_names(max_len);
 
     for (size_t len = 1; len < max_len; len *= 10) {
