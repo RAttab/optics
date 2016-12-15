@@ -33,25 +33,27 @@ struct http_client * http_connect(unsigned port)
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_STREAM
     };
-    struct addrinfo *result;
-    if (getaddrinfo("localhost", port_str, &hints, &result) < -1) {
+    struct addrinfo *head;
+    if (getaddrinfo("127.0.0.1", port_str, &hints, &head) < -1) {
         optics_fail_errno("getaddrinfo");
         optics_abort();
     }
 
-    client->fd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-    if (client->fd < 0) {
-        optics_fail_errno("socket");
-        optics_abort();
+    client->fd = -1;
+    for (struct addrinfo *addr = head; addr; addr = addr->ai_next) {
+        client->fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+        if (client->fd < 0) continue;
+
+        int ret = connect(client->fd, addr->ai_addr, addr->ai_addrlen);
+        if (ret < 0) {
+            close(client->fd);
+            continue;
+        }
     }
 
-    int ret = connect(client->fd, result->ai_addr, result->ai_addrlen);
-    if (ret < 0) {
-        optics_fail_errno("connect");
-        optics_abort();
-    }
+    if (client->fd < 0) optics_fail_errno("socket-connect");
 
-    freeaddrinfo(result);
+    freeaddrinfo(head);
     return client;
 }
 
