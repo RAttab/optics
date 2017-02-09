@@ -127,28 +127,20 @@ struct optics * optics_create_at(const char *name, optics_ts_t now)
     optics_assert_alloc(optics);
 
     if (!region_create(&optics->region, name, sizeof(*optics->header)))
-        goto fail_region;
+        return NULL;
 
     optics->header = region_ptr_unsafe(&optics->region, 0, sizeof(*optics->header));
-    if (!optics->header) goto fail_header;
+    if (!optics->header) return NULL;
 
     optics->header->magic = magic;
     optics->header->version = version;
 
-    if (!optics_set_prefix(optics, name)) goto fail_prefix;
+    if (!optics_set_prefix(optics, name)) return NULL;
 
     alloc_init(&optics->header->alloc);
     optics->header->epoch_last_inc = now;
 
     return optics;
-
-  fail_prefix:
-  fail_header:
-    region_close(&optics->region);
-
-  fail_region:
-    free(optics);
-    return NULL;
 }
 
 struct optics * optics_create(const char *name)
@@ -161,32 +153,22 @@ struct optics * optics_open(const char *name)
     struct optics *optics = calloc(1, sizeof(*optics));
     optics_assert_alloc(optics);
 
-    if (!region_open(&optics->region, name)) goto fail_region;
+    if (!region_open(&optics->region, name)) return NULL;
 
     optics->header = region_ptr(&optics->region, 0, sizeof(*optics->header));
-    if (!optics->header) goto fail_header;
+    if (!optics->header) return NULL;
 
     if (optics->header->magic != magic) {
         optics_fail("invalid magic: %p != %p", (void *) optics->header->magic, (void *) magic);
-        goto fail_magic;
+        return NULL;
     }
 
     if (optics->header->version != version) {
         optics_fail("invalid version: %lu != %lu", optics->header->version, version);
-        goto fail_version;
+        return NULL;
     }
 
-
     return optics;
-
-  fail_version:
-  fail_magic:
-  fail_header:
-    region_close(&optics->region);
-
-  fail_region:
-    free(optics);
-    return NULL;
 }
 
 

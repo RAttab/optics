@@ -90,7 +90,6 @@ lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dis
     struct lens_dist_epoch *dist = &dist_head->epochs[epoch];
     memset(value, 0, sizeof(*value));
 
-    size_t entries;
     double reservoir[dist_reservoir_len];
     {
         // Since we're not locking the active epoch, we shouldn't only contend
@@ -103,19 +102,17 @@ lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dis
         value->max = dist->max;
         dist->max = 0;
 
-        entries = value->n <= dist_reservoir_len ? value->n : dist_reservoir_len;
-
         // delay the sorting until we're not holding on the lock.
-        memcpy(reservoir, dist->reservoir, entries * sizeof(double));
+        memcpy(reservoir, dist->reservoir, value->n * sizeof(double));
 
         slock_unlock(&dist->lock);
     }
 
-    if (entries > 0) {
-        qsort(reservoir, entries, sizeof(double), lens_dist_value_cmp);
-        value->p50 = reservoir[lens_dist_p(50, entries)];
-        value->p90 = reservoir[lens_dist_p(90, entries)];
-        value->p99 = reservoir[lens_dist_p(99, entries)];
+    if (value->n > 0) {
+        qsort(reservoir, value->n, sizeof(double), lens_dist_value_cmp);
+        value->p50 = reservoir[lens_dist_p(50, value->n)];
+        value->p90 = reservoir[lens_dist_p(90, value->n)];
+        value->p99 = reservoir[lens_dist_p(99, value->n)];
     }
 
     return optics_ok;

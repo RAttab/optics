@@ -35,5 +35,6 @@ $ valgrind ./build/bin/key_test
 
 ## Fix Me!
 
-- key_test (try valgrind)
-
+- `lens_dist_test` (gdb)
+- `key_test` (valgrind)
+- `region_test` (valgrind)
