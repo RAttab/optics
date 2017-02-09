@@ -48,9 +48,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOPTICS_VERSION=\"${VERSION}\"")
 
 include(FindPkgConfig)
 
-pkg_check_modules(MHD REQUIRED libmicrohttpd)
-pkg_check_modules(DAEMON REQUIRED libdaemon)
-
 # Not installed on prod machine and is therefore optional
 pkg_check_modules(CMOCKA cmocka)
 if(CMOCKA_FOUND)
@@ -58,6 +55,8 @@ if(CMOCKA_FOUND)
 else()
     message("CMOCKA: OFF")
 endif()
+
+pkg_check_modules(LIBBSD libbsd REQUIRED)
 
 
 #------------------------------------------------------------------------------#
@@ -72,25 +71,21 @@ set(OPTICS_SOURCES
 
 set(OPTICS_DEPS
     optics_static
-    bsd
+    ${LIBBSD_LIBRARIES}
     rt)
 
 add_library(optics_static STATIC ${OPTICS_SOURCES})
 add_library(optics SHARED ${OPTICS_SOURCES})
-target_link_libraries(optics ${MHD_LIBRARIES} bsd rt)
+target_link_libraries(optics bsd rt)
 
 
 set(OPTICS_POLLER_SOURCES
     src/poller.c
     src/backend_stdout.c
-    src/backend_carbon.c
-    src/backend_rest.c
-    src/backend_prometheus.c
-    src/utils/crest/crest.c)
+    src/backend_carbon.c)
 
 set(OPTICS_POLLER_DEPS
     optics_poller_static
-    ${MHD_LIBRARIES}
     ${OPTICS_DEPS})
 
 add_library(optics_poller_static STATIC ${OPTICS_POLLER_SOURCES})
@@ -103,15 +98,13 @@ add_library(optics_poller_static STATIC ${OPTICS_POLLER_SOURCES})
 add_executable(example test/example.c)
 target_link_libraries(example optics_static ${OPTICS_DEPS})
 
-add_executable(opticsd src/opticsd.c)
-target_link_libraries(opticsd ${OPTICS_POLLER_DEPS} ${DAEMON_LIBRARIES})
 
 
 #------------------------------------------------------------------------------#
 # INSTALL
 #------------------------------------------------------------------------------#
 
-install(TARGETS optics optics_static opticsd
+install(TARGETS optics optics_static
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib)
@@ -176,33 +169,6 @@ optics_cmocka_test(lens_dist)
 optics_cmocka_test(poller)
 optics_cmocka_test(poller_lens)
 optics_cmocka_test(backend_carbon)
-optics_cmocka_test(backend_prometheus)
-optics_cmocka_test(backend_rest)
-optics_cmocka_test(crest)
-
-
-#------------------------------------------------------------------------------#
-# BENCHS
-#------------------------------------------------------------------------------#
-
-function(optics_cmocka_bench name)
-    if(CMOCKA_FOUND)
-        add_executable(${name}_bench test/${name}_bench.c)
-        target_link_libraries(${name}_bench optics_tests ${OPTICS_TESTS_DEPS})
-        set_property(TARGET ${name}_bench APPEND PROPERTY COMPILE_OPTIONS ${CMOCKA_CFLAGS})
-
-        add_test(${name}_bench bin/${name}_bench)
-        set_tests_properties(${name}_bench PROPERTIES LABELS "bench")
-    endif()
-endfunction()
-
-optics_cmocka_bench(bench)
-optics_cmocka_bench(timer)
-optics_cmocka_bench(htable)
-optics_cmocka_bench(lens)
-optics_cmocka_bench(lens_gauge)
-optics_cmocka_bench(lens_counter)
-optics_cmocka_bench(lens_dist)
 
 
 #------------------------------------------------------------------------------#
