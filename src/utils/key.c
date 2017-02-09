@@ -21,7 +21,9 @@ size_t optics_key_push(struct optics_key *key, const char *suffix)
         key->len++;
     }
 
-    key->len += strlcpy(key->data + key->len, suffix, sizeof(key->data) - key->len);
+    strncpy(key->data + key->len, suffix, sizeof(key->data));
+    key->len += strlen(suffix);
+
     if (key->len >= sizeof(key->data)) key->len = sizeof(key->data) - 1;
 
     optics_assert(key->data[key->len] == '\0',

@@ -12,28 +12,28 @@
 
 optics_test_head(basics_test)
 {
-    struct optics_key key = {0};
+    struct optics_key *key = calloc(1, sizeof(*key));
 
-    size_t i = optics_key_push(&key, "blah");
-    assert_string_equal(key.data, "blah");
+    size_t i = optics_key_push(key, "blah");
+    assert_string_equal(key->data, "blah");
 
-    size_t j = optics_key_push(&key, "bleh");
-    assert_string_equal(key.data, "blah.bleh");
+    size_t j = optics_key_push(key, "bleh");
+    assert_string_equal(key->data, "blah.bleh");
 
-    size_t k = optics_key_push(&key, "bloh");
-    assert_string_equal(key.data, "blah.bleh.bloh");
+    size_t k = optics_key_push(key, "bloh");
+    assert_string_equal(key->data, "blah.bleh.bloh");
 
-    optics_key_pop(&key, k);
-    assert_string_equal(key.data, "blah.bleh");
+    optics_key_pop(key, k);
+    assert_string_equal(key->data, "blah.bleh");
 
-    optics_key_push(&key, "blyh");
-    assert_string_equal(key.data, "blah.bleh.blyh");
+    optics_key_push(key, "blyh");
+    assert_string_equal(key->data, "blah.bleh.blyh");
 
-    optics_key_pop(&key, j);
-    assert_string_equal(key.data, "blah");
+    optics_key_pop(key, j);
+    assert_string_equal(key->data, "blah");
 
-    optics_key_pop(&key, i);
-    assert_string_equal(key.data, "");
+    optics_key_pop(key, i);
+    assert_string_equal(key->data, "");
 }
 optics_test_tail()
 
