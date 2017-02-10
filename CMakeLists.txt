@@ -50,6 +50,7 @@ include(FindPkgConfig)
 
 pkg_check_modules(MHD REQUIRED libmicrohttpd)
 pkg_check_modules(DAEMON REQUIRED libdaemon)
+pkg_check_modules(LIBBSD REQUIRED libbsd)
 
 # Not installed on prod machine and is therefore optional
 pkg_check_modules(CMOCKA cmocka)
@@ -72,7 +73,7 @@ set(OPTICS_SOURCES
 
 set(OPTICS_DEPS
     optics_static
-    bsd
+    ${LIBBSD_LIBRARIES}
     rt)
 
 add_library(optics_static STATIC ${OPTICS_SOURCES})
