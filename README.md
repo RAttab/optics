@@ -12,7 +12,7 @@ Dependencies:
 - libmicrohttpd
 
 Optional Dependencies:
-- ninja (faster then `gmake`)
+- ninja (faster than `gmake`)
 - cmocka (tests are disabled if not present)
 - valgrind (run with `ctest -V . -L valgrind`)
 - ubsan (part of clang - enabled via `cmake -DENABLE_UBSAN`)
@@ -36,12 +36,12 @@ sudo ninja -C build install
 ```
 
 Options:
-- `cmake . -G Ninja`: use ninja which is generally faster then gmake
+- `cmake . -G Ninja`: use ninja which is generally faster than gmake
 - `cmake . -DENABLE_UBSAN=ON`: compile with the gcc undefined behaviour sanitizer
 - `cmake . -DCMAKE_INSTALL_PREFIX=/path/to/install`: where files should be
   installed (defaults to `/usr/local`)
 - `ninja clang-tidy`: compile opticsd with clang-tidy
-- `ctest -V . -L test`: Run only the funcitonal tests
+- `ctest -V . -L test`: Run only the functional tests
 - `ctest -V . -L valgrind`: Run only the valgrind tests
 - `ctest -V . -L bench`: run only the benchmarks
 
@@ -52,7 +52,7 @@ To log metrics refer to this [example](test/example.c) which describes the
 basics of creating and logging metrics.
 
 Polling metrics is accomplished by running the `opticsd` daemon which will
-automatically pick-up any newly created optics instances and start dumping them
+automatically pick up any newly created optics instances and start dumping them
 to its configured backends. The following is a simple example for running the
 daemon:
 
@@ -71,6 +71,6 @@ curl -s localhost:3002/metrics/json
 
 ### Pre-emptive Nit-picking
 
-* Assumes amd64
-* Not 100% POSIX compliant
+* Assumes AMD64
+* Not 100% POSIX-compliant
 * Only Linux is supported
