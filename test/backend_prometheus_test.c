@@ -23,6 +23,8 @@ optics_test_head(backend_prometheus_with_source_test)
     struct optics_lens *counter = optics_counter_alloc(optics, "counter");
     struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
+    const double buckets[] = {1, 2, 3};
+    struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
 
     struct crest *crest = crest_new();
     struct optics_poller *poller = optics_poller_alloc();
@@ -35,6 +37,7 @@ optics_test_head(backend_prometheus_with_source_test)
         optics_counter_inc(counter, 1);
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
+        for (size_t i = 0; i < 80; ++i) optics_histo_inc(histo, i % 4);
         if (!optics_poller_poll(poller)) optics_abort();
 
         char body[4096];
@@ -46,10 +49,18 @@ optics_test_head(backend_prometheus_with_source_test)
                 "__optics_dist_count{source=\".-source\"} %lu\n"
                 "# TYPE __optics_gauge gauge\n"
                 "__optics_gauge{source=\".-source\"} 1\n"
+                "# TYPE __optics_histo histogram\n"
+                "__optics_histo_bucket{source=\".-source\",le=\"1\"} %lu\n"
+                "__optics_histo_bucket{source=\".-source\",le=\"+Inf\"} %lu\n"
+                "__optics_histo_bucket{source=\".-source\",le=\"2\"} %lu\n"
+                "__optics_histo_bucket{source=\".-source\",le=\"3\"} %lu\n"
+                "__optics_histo_count{source=\".-source\"} %lu\n"
                 "# TYPE __optics_counter counter\n"
                 "__optics_counter{source=\".-source\"} %lu\n"
                 "\n",
-                (it + 1) * 100, (it + 1));
+                100*(it+1), // dist
+                20* (it+1), 20 * (it+ 1), 20 * (it+1), 20 * (it+1), 80 * (it+1), // histo
+                (it+1)); // counter
 
         assert_http_body(port, "GET", path, 200, body);
     }
@@ -74,6 +85,8 @@ optics_test_head(backend_prometheus_without_source_test)
     struct optics_lens *counter = optics_counter_alloc(optics, "counter");
     struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
+    const double buckets[] = {1, 2, 3};
+    struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
 
     struct crest *crest = crest_new();
     struct optics_poller *poller = optics_poller_alloc();
@@ -86,6 +99,7 @@ optics_test_head(backend_prometheus_without_source_test)
         optics_counter_inc(counter, 1);
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
+        for (size_t i = 0; i < 80; ++i) optics_histo_inc(histo, i % 4);
         if (!optics_poller_poll(poller)) optics_abort();
 
         char body[4096];
@@ -97,10 +111,19 @@ optics_test_head(backend_prometheus_without_source_test)
                 "__optics_dist{quantile=\"0.9\"} 90\n"
                 "__optics_dist{quantile=\"0.99\"} 99\n"
                 "__optics_dist_count %lu\n"
+                "# TYPE __optics_histo histogram\n"
+                "__optics_histo_bucket{le=\"1\"} %lu\n"
+                "__optics_histo_bucket{le=\"+Inf\"} %lu\n"
+                "__optics_histo_bucket{le=\"2\"} %lu\n"
+                "__optics_histo_bucket{le=\"3\"} %lu\n"
+                "__optics_histo_count %lu\n"
                 "# TYPE __optics_gauge gauge\n"
                 "__optics_gauge 1\n"
                 "\n",
-                (it + 1), (it + 1) * 100);
+                (it+1), // counters
+                100*(it+1), // dist
+                20*(it+1), 20*(it+1), 20*(it+1), 20*(it+1), 80*(it+1) //histo
+            );
 
         assert_http_body(port, "GET", path, 200, body);
     }

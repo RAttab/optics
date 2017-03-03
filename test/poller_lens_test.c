@@ -256,6 +256,89 @@ optics_test_tail()
 
 
 // -----------------------------------------------------------------------------
+// histo
+// -----------------------------------------------------------------------------
+
+optics_test_head(poller_histo_test)
+{
+    struct htable result = {0};
+    struct optics_poller *poller = optics_poller_alloc();
+    optics_poller_set_host(poller, "host");
+    optics_poller_backend(poller, &result, backend_cb, NULL);
+
+    optics_ts_t ts = 0;
+
+    struct optics *optics = optics_create_at(test_name, ts);
+    const double buckets[] = {1, 2, 3};
+    struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
+    optics_set_prefix(optics, "prefix");
+    optics_set_source(optics, "source");
+
+    ts++;
+
+    optics_poller_poll_at(poller, ts);
+    assert_htable_equal(&result, 0,
+            make_kv("prefix.host.source.histo.below", 0.0),
+            make_kv("prefix.host.source.histo.bucket_1_2", 0.0),
+            make_kv("prefix.host.source.histo.bucket_2_3", 0.0),
+            make_kv("prefix.host.source.histo.above", 0.0));
+
+    for (size_t i = 0; i < 3; ++i) {
+        ts++;
+        optics_histo_inc(histo, 1.0);
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0,
+                make_kv("prefix.host.source.histo.below", 0.0),
+                make_kv("prefix.host.source.histo.bucket_1_2", 1.0),
+                make_kv("prefix.host.source.histo.bucket_2_3", 0.0),
+                make_kv("prefix.host.source.histo.above", 0.0));
+
+        ts++;
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0,
+                make_kv("prefix.host.source.histo.below", 0.0),
+                make_kv("prefix.host.source.histo.bucket_1_2", 0.0),
+                make_kv("prefix.host.source.histo.bucket_2_3", 0.0),
+                make_kv("prefix.host.source.histo.above", 0.0));
+
+        ts++;
+        for (size_t i = 0; i < 80; ++i)
+            optics_histo_inc(histo, i % 4);
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0,
+                make_kv("prefix.host.source.histo.below", 20.0),
+                make_kv("prefix.host.source.histo.bucket_1_2", 20.0),
+                make_kv("prefix.host.source.histo.bucket_2_3", 20.0),
+                make_kv("prefix.host.source.histo.above", 20.0));
+
+        ts += 5;
+        for (size_t i = 0; i < 80; ++i)
+            optics_histo_inc(histo, i % 4);
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0,
+                make_kv("prefix.host.source.histo.below", 4.0),
+                make_kv("prefix.host.source.histo.bucket_1_2", 4.0),
+                make_kv("prefix.host.source.histo.bucket_2_3", 4.0),
+                make_kv("prefix.host.source.histo.above", 4.0));
+    }
+
+    htable_reset(&result);
+    optics_lens_close(histo);
+    optics_close(optics);
+    optics_poller_free(poller);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
 // setup
 // -----------------------------------------------------------------------------
 
@@ -267,6 +350,7 @@ int main(void)
         cmocka_unit_test(poller_gauge_test),
         cmocka_unit_test(poller_counter_test),
         cmocka_unit_test(poller_dist_test),
+        cmocka_unit_test(poller_histo_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
