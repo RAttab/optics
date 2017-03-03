@@ -30,6 +30,17 @@ size_t optics_key_push(struct optics_key *key, const char *suffix)
     return old;
 }
 
+size_t optics_key_pushf(struct optics_key *key, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    char suffix[optics_name_max_len];
+    (void) vsnprintf(suffix, optics_name_max_len, fmt, args);
+
+    return optics_key_push(key, suffix);
+}
+
 void optics_key_pop(struct optics_key *key, size_t pos)
 {
     optics_assert(pos <= key->len, "invalid key pop: %lu > %lu", pos, key->len);

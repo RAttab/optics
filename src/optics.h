@@ -130,6 +130,7 @@ struct optics_key
 };
 
 size_t optics_key_push(struct optics_key *key, const char *suffix);
+size_t optics_key_pushf(struct optics_key *key, const char *fmt, ...);
 void optics_key_pop(struct optics_key *key, size_t pos);
 
 
