@@ -100,6 +100,11 @@ static void * lens_sub_ptr(struct lens *lens, enum optics_lens_type type)
     return ((uint8_t *) lens) + sizeof(struct lens);
 }
 
+static double lens_rescale(const struct optics_poll *poll, double value)
+{
+    return value / poll->elapsed;
+}
+
 
 // -----------------------------------------------------------------------------
 // interface
