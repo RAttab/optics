@@ -159,6 +159,9 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
     case optics_dist:
         metric->value.dist.n += dist_count_value(prometheus, key.data);
         break;
+    case optics_histo:
+        optics_todo("fuck prometheus");
+        break;
     case optics_gauge: default: break;
     }
 
@@ -205,6 +208,30 @@ static void print_metric(struct buffer *buffer, const char *key, const struct me
                 metric->key.data, source_first, metric->value.dist.p99,
                 metric->key.data, source_solo, metric->value.dist.n);
         break;
+
+    case optics_histo:
+    {
+        const struct optics_histo *histo = &metric->value.histo;
+
+        buffer_printf(buffer,
+                "# TYPE %s histogram\n"
+                "%s_bucket{%sle=\"%3g\"} %zu\n"
+                "%s_bucket{%sle=\"+Inf\"} %zu\n",
+                metric->key.data,
+                metric->key.data, source_first, histo->buckets[0], histo->below,
+                metric->key.data, source_first, histo->above);
+
+        size_t count = histo->below + histo->above;
+        for (size_t i = 1; i < histo->buckets_len; ++i) {
+            buffer_printf(buffer, "%s_bucket{%sle=\"%3g\"} %zu\n",
+                    metric->key.data, source_first, histo->buckets[i], histo->counts[i - 1]);
+            count += histo->counts[i - 1];
+        }
+
+        buffer_printf(buffer, "%s_count%s %zu\n",
+                metric->key.data, source_solo, count);
+        break;
+    }
 
     default:
         optics_fail("unknown lens type '%d'", metric->type);

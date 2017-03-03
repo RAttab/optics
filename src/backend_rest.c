@@ -142,6 +142,22 @@ static void write_counter(struct buffer *buffer, const struct metric *metric)
                 metric->value.dist.n);
         break;
 
+    case optics_histo:
+    {
+        const struct optics_histo *histo = &metric->value.histo;
+
+        buffer_printf(buffer, "\"%s\":{\"below\":%zu,\"above\":%zu",
+                metric->key, histo->above, histo->below);
+
+        for (size_t i = 0; i < histo->buckets_len - 1; ++i) {
+            buffer_printf(buffer, ",\"bucket_%3g-%3g\":%zu",
+                    histo->buckets[i], histo->buckets[i+1], histo->counts[i]);
+        }
+
+        buffer_put(buffer, '}');
+        break;
+    }
+
     default:
         optics_fail("unknown lens type '%d'", metric->type);
         break;

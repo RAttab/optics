@@ -34,3 +34,6 @@ enum optics_ret optics_gauge_read(
 
 enum optics_ret optics_dist_read(
         struct optics_lens *, optics_epoch_t epoch, struct optics_dist *value);
+
+enum optics_ret optics_histo_read(
+        struct optics_lens *, optics_epoch_t epoch, struct optics_histo *value);

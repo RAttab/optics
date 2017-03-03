@@ -21,6 +21,9 @@ enum {
     optics_name_max_len = 256,
     optics_err_msg_cap = 1024,
     optics_err_backtrace_cap = 256,
+
+    // Maximum number of allowed buckets in a histogram lens.
+    optics_histo_buckets_max = 8,
 };
 
 typedef uint64_t optics_ts_t;
@@ -81,6 +84,7 @@ enum optics_lens_type
     optics_counter,
     optics_gauge,
     optics_dist,
+    optics_histo,
 };
 
 enum optics_ret
@@ -117,6 +121,21 @@ struct optics_dist
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
 struct optics_lens * optics_dist_alloc_get(struct optics *, const char *name);
 bool optics_dist_record(struct optics_lens *, double value);
+
+struct optics_histo
+{
+    size_t buckets_len;
+    double buckets[optics_histo_buckets_max + 1];
+
+    size_t below, above;
+    size_t counts[optics_histo_buckets_max];
+};
+
+struct optics_lens * optics_histo_alloc(
+        struct optics *, const char *name, const double *buckets, size_t buckets_len);
+struct optics_lens * optics_histo_alloc_get(
+        struct optics *, const char *name, const double *buckets, size_t buckets_len);
+bool optics_histo_inc(struct optics_lens *, double value);
 
 
 // -----------------------------------------------------------------------------
@@ -170,6 +189,7 @@ union optics_poll_value
         int64_t counter;
         double gauge;
         struct optics_dist dist;
+        struct optics_histo histo;
 };
 
 struct optics_poll
