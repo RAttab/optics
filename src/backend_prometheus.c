@@ -63,38 +63,51 @@ static void swap_tables(struct prometheus *prometheus)
     prometheus->build = (struct htable) {0};
 }
 
-static int64_t counter_value(struct prometheus *prometheus, const char *key) {
-    int64_t result = 0;
-
-    slock_lock(&prometheus->lock);
-
-    struct htable_ret ret = htable_get(&prometheus->current, key);
-    if (ret.ok) {
-        struct metric *old = pun_itop(ret.value);
-        if (old->type == optics_counter) result = old->value.counter;
-    }
-
-    slock_unlock(&prometheus->lock);
-
-    return result;
-
+static void merge_counter(const int64_t *old, int64_t *new)
+{
+    *new += *old;
 }
 
-static int64_t dist_count_value(struct prometheus *prometheus, const char *key) {
-    int64_t result = 0;
+static void merge_dist(const struct optics_dist *old, struct optics_dist *new)
+{
+    new->n += old->n;
+}
 
+static void merge_histo(const struct optics_histo *old, struct optics_histo *new)
+{
+    if (new->buckets_len != old->buckets_len) return;
+
+    for (size_t i = 0; i < new->buckets_len; ++i) {
+        if (new->buckets[i] != old->buckets[i]) return;
+    }
+
+    new->above += old->above;
+    new->below += old->below;
+    for (size_t i = 0; i < new->buckets_len; ++i)
+        new->counts[i] += old->counts[i];
+}
+
+static void merge_metric(
+        struct prometheus *prometheus, const char *key, struct metric *metric)
+{
     slock_lock(&prometheus->lock);
 
     struct htable_ret ret = htable_get(&prometheus->current, key);
-    if (ret.ok) {
-        struct metric *old = pun_itop(ret.value);
-        if (old->type == optics_dist) result = old->value.dist.n;
+    if (!ret.ok) goto exit;
+
+    const struct metric *old = pun_itop(ret.value);
+    if (old->type != metric->type) goto exit;
+
+    switch (metric->type) {
+    case optics_dist: merge_dist(&old->value.dist, &metric->value.dist); break;
+    case optics_histo: merge_histo(&old->value.histo, &metric->value.histo); break;
+    case optics_counter: merge_counter(&old->value.counter, &metric->value.counter); break;
+    case optics_gauge: break;
+    default: break;
     }
 
+  exit:
     slock_unlock(&prometheus->lock);
-
-    return result;
-
 }
 
 static bool is_valid_char(char c)
@@ -151,19 +164,7 @@ static void record(struct prometheus *prometheus, const struct optics_poll *poll
     htable_key(&key, poll);
 
     struct metric *metric = make_metric(poll);
-
-    switch (metric->type) {
-    case optics_counter:
-        metric->value.counter += counter_value(prometheus, key.data);
-        break;
-    case optics_dist:
-        metric->value.dist.n += dist_count_value(prometheus, key.data);
-        break;
-    case optics_histo:
-        optics_todo("fuck prometheus");
-        break;
-    case optics_gauge: default: break;
-    }
+    merge_metric(prometheus, key.data, metric);
 
     struct htable_ret ret = htable_put(&prometheus->build, key.data, pun_ptoi(metric));
     if (!ret.ok) {
@@ -215,7 +216,7 @@ static void print_metric(struct buffer *buffer, const char *key, const struct me
 
         buffer_printf(buffer,
                 "# TYPE %s histogram\n"
-                "%s_bucket{%sle=\"%3g\"} %zu\n"
+                "%s_bucket{%sle=\"%.3g\"} %zu\n"
                 "%s_bucket{%sle=\"+Inf\"} %zu\n",
                 metric->key.data,
                 metric->key.data, source_first, histo->buckets[0], histo->below,
@@ -223,7 +224,7 @@ static void print_metric(struct buffer *buffer, const char *key, const struct me
 
         size_t count = histo->below + histo->above;
         for (size_t i = 1; i < histo->buckets_len; ++i) {
-            buffer_printf(buffer, "%s_bucket{%sle=\"%3g\"} %zu\n",
+            buffer_printf(buffer, "%s_bucket{%sle=\"%.3g\"} %zu\n",
                     metric->key.data, source_first, histo->buckets[i], histo->counts[i - 1]);
             count += histo->counts[i - 1];
         }
