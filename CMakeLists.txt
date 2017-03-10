@@ -50,6 +50,7 @@ include(FindPkgConfig)
 
 pkg_check_modules(MHD REQUIRED libmicrohttpd)
 pkg_check_modules(DAEMON REQUIRED libdaemon)
+pkg_check_modules(LIBBSD REQUIRED libbsd)
 
 # Not installed on prod machine and is therefore optional
 pkg_check_modules(CMOCKA cmocka)
@@ -64,7 +65,8 @@ endif()
 # LIBS
 #------------------------------------------------------------------------------#
 
-include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${PROJECT_SOURCE_DIR}/src" ${CMOCKA_INCLUDE_DIRS} ${DAEMON_INCLUDE_DIRS} ${LIBBSD_INCLUDE_DIRS} ${MHD_INCLUDE_DIRS})
+link_directories(${CMOCKA_LIBRARY_DIRS} ${DAEMON_LIBRARY_DIRS} ${LIBBSD_LIBRARY_DIRS} ${MHD_LIBRARY_DIRS})
 
 set(OPTICS_SOURCES
     src/optics.c
@@ -72,12 +74,12 @@ set(OPTICS_SOURCES
 
 set(OPTICS_DEPS
     optics_static
-    bsd
+    ${LIBBSD_LIBRARIES}
     rt)
 
 add_library(optics_static STATIC ${OPTICS_SOURCES})
 add_library(optics SHARED ${OPTICS_SOURCES})
-target_link_libraries(optics ${MHD_LIBRARIES} bsd rt)
+target_link_libraries(optics ${MHD_LIBRARIES} ${LIBBSD_LIBRARIES} rt)
 
 
 set(OPTICS_POLLER_SOURCES
