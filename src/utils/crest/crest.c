@@ -119,8 +119,8 @@ static void crest_call_cb(
     enum crest_result result = cb(res->context, req, resp);
     switch (result) {
     case crest_ok:       crest_resp_send(resp, code); return;
-    case crest_err:      crest_resp_send_error(resp, 500, NULL); return;
-    case crest_conflict: crest_resp_send_error(resp, 409, NULL); return;
+    case crest_err:      crest_resp_send_error(resp, 500, "internal server error"); return;
+    case crest_conflict: crest_resp_send_error(resp, 409, "conflict"); return;
     default:
         optics_fail("unknown crest callback return value: %d", result);
         optics_abort();
@@ -150,22 +150,22 @@ static void crest_process(
         optics_abort();
     };
     if (!cb) {
-        crest_resp_send_error(resp, 501, NULL);
+        crest_resp_send_error(resp, 501, "not implemented");
         return;
     }
 
     if (res->authorized && !res->authorized(res->context, req)) {
-        crest_resp_send_error(resp, 401, NULL);
+        crest_resp_send_error(resp, 401, "unauthorized");
         return;
     }
 
     if (res->forbidden && !res->forbidden(res->context, req)) {
-        crest_resp_send_error(resp, 403, NULL);
+        crest_resp_send_error(resp, 403, "forbidden");
         return;
     }
 
     if (res->accepts && !res->accepts(res->context, req)) {
-        crest_resp_send_error(resp, 406, NULL);
+        crest_resp_send_error(resp, 406, "not acceptable");
         return;
     }
 
