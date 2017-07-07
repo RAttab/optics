@@ -1,7 +1,8 @@
-/* lens_gauge.c
-   Rémi Attab (remi.attab@gmail.com), 25 Feb 2016
+/* lens_histo.c
+   Rémi Attab (remi.attab@gmail.com), 07 Jul 2017
    FreeBSD-style copyright and disclaimer apply
 */
+
 
 // -----------------------------------------------------------------------------
 // struct
