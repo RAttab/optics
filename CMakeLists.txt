@@ -204,6 +204,7 @@ optics_cmocka_bench(lens)
 optics_cmocka_bench(lens_gauge)
 optics_cmocka_bench(lens_counter)
 optics_cmocka_bench(lens_dist)
+optics_cmocka_bench(lens_histo)
 
 
 #------------------------------------------------------------------------------#
