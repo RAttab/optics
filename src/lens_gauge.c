@@ -53,6 +53,11 @@ lens_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
     if (!gauge) return optics_err;
 
     uint64_t result = atomic_load_explicit(&gauge->value, memory_order_relaxed);
+
+    // Last writer wins would be semantically consistent but complicates things
+    // too much: would require that we have the timestamp of both writes which
+    // in turns require that we record the timestamp of each writes which is
+    // just not worth the effort.
     *value = pun_itod(result);
 
     return optics_ok;

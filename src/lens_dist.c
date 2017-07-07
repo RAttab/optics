@@ -97,7 +97,7 @@ lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dis
         // with straglers which can be dealt with by the poller.
         if (slock_is_locked(&dist->lock)) return optics_busy;
 
-        value->n = dist->n;
+        value->n += dist->n;
         dist->n = 0;
 
         value->max = dist->max;
@@ -110,6 +110,8 @@ lens_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dis
 
         slock_unlock(&dist->lock);
     }
+
+    assert(false && "merging logic missing");
 
     if (entries > 0) {
         qsort(reservoir, entries, sizeof(double), lens_dist_value_cmp);
