@@ -45,7 +45,7 @@ typedef size_t optics_epoch_t; // 0 - 1 value.
 typedef atomic_size_t atomic_optics_epoch_t;
 
 static const size_t page_len = 4096UL;
-static const size_t cache_line_len = 64UL;;
+static const size_t cache_line_len = 64UL;
 
 static const uint64_t magic = 0x044b33f12afe7de0UL;
 static const uint64_t version = 1;
@@ -636,6 +636,47 @@ optics_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_d
 
 
 // -----------------------------------------------------------------------------
+// histo
+// -----------------------------------------------------------------------------
+
+struct optics_lens * optics_histo_alloc(
+        struct optics *optics, const char *name, const double *buckets, size_t buckets_len)
+{
+    struct lens *histo = lens_histo_alloc(optics, name, buckets, buckets_len);
+    if (!histo) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc(optics, histo);
+    if (lens) return lens;
+
+    lens_free(optics, histo);
+    return NULL;
+}
+
+struct optics_lens * optics_histo_alloc_get(
+        struct optics *optics, const char *name, const double *buckets, size_t buckets_len)
+{
+    struct lens *histo = lens_histo_alloc(optics, name, buckets, buckets_len);
+    if (!histo) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc_get(optics, histo);
+    if (lens->lens != histo) lens_free(optics, histo);
+
+    return lens;
+}
+
+bool optics_histo_inc(struct optics_lens *lens, double value)
+{
+    return lens_histo_inc(lens, optics_epoch(lens->optics), value);
+}
+
+enum optics_ret
+optics_histo_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_histo *value)
+{
+    return lens_histo_read(lens, epoch, value);
+}
+
+
+// -----------------------------------------------------------------------------
 // value
 // -----------------------------------------------------------------------------
 
@@ -646,6 +687,7 @@ bool optics_poll_normalize(
     case optics_counter: return lens_counter_normalize(poll, cb, ctx);
     case optics_gauge: return lens_gauge_normalize(poll, cb, ctx);
     case optics_dist: return lens_dist_normalize(poll, cb, ctx);
+    case optics_histo: return lens_histo_normalize(poll, cb, ctx);
     default:
         optics_fail("unknown lens type '%d'", poll->type);
         return false;

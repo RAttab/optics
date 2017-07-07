@@ -78,6 +78,10 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
         ret = optics_dist_read(lens, ctx->epoch, &poll.value.dist);
         break;
 
+    case optics_histo:
+        ret = optics_histo_read(lens, ctx->epoch, &poll.value.histo);
+        break;
+
     default:
         optics_fail("unknown poller type '%d'", optics_lens_type(lens));
         ret = optics_err;
@@ -92,7 +96,7 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
         optics_warn("skipping lens '%s'", ctx->key->data);
 
     else if (ret == optics_err)
-        optics_warn("unable to read dist '%s': %s", ctx->key->data, optics_errno.msg);
+        optics_warn("unable to read lens '%s': %s", ctx->key->data, optics_errno.msg);
 
     optics_key_pop(ctx->key, old_key);
     return optics_ok;

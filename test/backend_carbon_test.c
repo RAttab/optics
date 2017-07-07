@@ -58,6 +58,8 @@ optics_test_head(backend_carbon_internal_with_source_test)
     struct optics_lens *counter = optics_counter_alloc(optics, "counter");
     struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
+    const double buckets[] = {1, 2, 3};
+    struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
 
     struct optics_poller *poller = optics_poller_alloc();
     optics_poller_set_host(poller, "host");
@@ -67,6 +69,7 @@ optics_test_head(backend_carbon_internal_with_source_test)
         optics_counter_inc(counter, 1);
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
+        for (size_t i = 0; i < 100; ++i) optics_histo_inc(histo, i % 5);
 
         if (!optics_poller_poll(poller)) optics_abort();
 
@@ -83,7 +86,11 @@ optics_test_head(backend_carbon_internal_with_source_test)
                 make_kv("prefix.host.source.dist.p90", 90),
                 make_kv("prefix.host.source.dist.p99", 99),
                 make_kv("prefix.host.source.dist.max", 99),
-                make_kv("prefix.host.source.dist.count", 100));
+                make_kv("prefix.host.source.dist.count", 100),
+                make_kv("prefix.host.source.histo.bucket_1_2", 20),
+                make_kv("prefix.host.source.histo.bucket_2_3", 20),
+                make_kv("prefix.host.source.histo.below", 20),
+                make_kv("prefix.host.source.histo.above", 40));
 
         htable_reset(&result);
     }
@@ -92,6 +99,7 @@ optics_test_head(backend_carbon_internal_with_source_test)
     optics_lens_close(counter);
     optics_lens_close(gauge);
     optics_lens_close(dist);
+    optics_lens_close(histo);
     optics_close(optics);
     carbon_stop(carbon);
 }
@@ -109,6 +117,8 @@ optics_test_head(backend_carbon_internal_without_source_test)
     struct optics_lens *counter = optics_counter_alloc(optics, "counter");
     struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
+    const double buckets[] = {1, 2, 3};
+    struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
 
     struct optics_poller *poller = optics_poller_alloc();
     optics_poller_set_host(poller, "host");
@@ -118,6 +128,7 @@ optics_test_head(backend_carbon_internal_without_source_test)
         optics_counter_inc(counter, 1);
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
+        for (size_t i = 0; i < 100; ++i) optics_histo_inc(histo, i % 5);
 
         if (!optics_poller_poll(poller)) optics_abort();
 
@@ -134,7 +145,11 @@ optics_test_head(backend_carbon_internal_without_source_test)
                 make_kv("prefix.host.dist.p90", 90),
                 make_kv("prefix.host.dist.p99", 99),
                 make_kv("prefix.host.dist.max", 99),
-                make_kv("prefix.host.dist.count", 100));
+                make_kv("prefix.host.dist.count", 100),
+                make_kv("prefix.host.histo.bucket_1_2", 20),
+                make_kv("prefix.host.histo.bucket_2_3", 20),
+                make_kv("prefix.host.histo.below", 20),
+                make_kv("prefix.host.histo.above", 40));
 
         htable_reset(&result);
     }
@@ -143,6 +158,7 @@ optics_test_head(backend_carbon_internal_without_source_test)
     optics_lens_close(counter);
     optics_lens_close(gauge);
     optics_lens_close(dist);
+    optics_lens_close(histo);
     optics_close(optics);
     carbon_stop(carbon);
 }
@@ -252,7 +268,7 @@ void * carbon_run(void *ctx)
     struct carbon *carbon = ctx;
 
     int fd = socket_stream_accept(carbon->listen_fd);
-    if (fd < 0) abort();
+    if (fd < 0) optics_abort();
 
     ssize_t len;
     char buffer[8192];
@@ -275,7 +291,7 @@ void carbon_parse(struct carbon *carbon, struct htable *table)
         char key[optics_name_max_len];
         double value;
         optics_ts_t ts;
-        sscanf(line, "%s %lf %lu", key, &value, &ts);
+        sscanf(line, "%[^ ] %lf %lu", key, &value, &ts);
 
         if (!htable_put(table, key, pun_dtoi(value)).ok) {
             optics_fail("duplicate key detected '%s'", key);
@@ -293,7 +309,7 @@ struct carbon * carbon_start(const char *port)
     struct carbon *carbon = calloc(1, sizeof(*carbon));
 
     carbon->listen_fd = socket_stream_listen(port);
-    if (carbon->listen_fd < 0) abort();
+    if (carbon->listen_fd < 0) optics_abort();
 
 
     int err = pthread_create(&carbon->thread, NULL, &carbon_run, carbon);

@@ -129,8 +129,7 @@ lens_dist_normalize(
     size_t old;
 
     old = optics_key_push(poll->key, "count");
-    double rescaled = (double) poll->value.dist.n / poll->elapsed;
-    ret = cb(ctx, poll->ts, poll->key->data, rescaled);
+    ret = cb(ctx, poll->ts, poll->key->data, lens_rescale(poll, poll->value.dist.n));
     optics_key_pop(poll->key, old);
     if (!ret) return false;
 
