@@ -693,3 +693,11 @@ bool optics_poll_normalize(
         return false;
     }
 }
+
+
+// -----------------------------------------------------------------------------
+// misc
+// -----------------------------------------------------------------------------
+
+extern inline void optics_timer_start(optics_timer_t *t0);
+extern inline double optics_timer_elapsed(optics_timer_t *t0, double scale);
