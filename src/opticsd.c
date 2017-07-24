@@ -183,6 +183,7 @@ int main(int argc, char **argv)
                 optics_fail("invalid http argument: %s", optarg);
                 optics_error_exit();
             }
+            break;
 
         case 's':
             backend_selected = true;
