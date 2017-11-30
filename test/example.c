@@ -64,7 +64,7 @@ int main(void)
     // Note that the accuracy of the timer may suffer if the recorded latency
     // falls below a micro-second.
     {
-        struct optics_lens *lens = optics_dist_alloc(optics, "my_distribution");
+        struct optics_lens *lens = optics_lens_get(optics, "my_distribution");
 
         optics_timer_t t0;
         optics_timer_start(&t0);
