@@ -69,9 +69,6 @@ bool optics_unlink_all();
 const char *optics_get_prefix(struct optics *);
 bool optics_set_prefix(struct optics *, const char *prefix);
 
-const char *optics_get_source(struct optics *);
-bool optics_set_source(struct optics *, const char *source);
-
 
 // -----------------------------------------------------------------------------
 // lens
@@ -207,8 +204,6 @@ union optics_poll_value
 struct optics_poll
 {
     const char *host;
-    const char *prefix;
-    const char *source;
     struct optics_key *key;
 
     enum optics_lens_type type;

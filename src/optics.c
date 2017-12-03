@@ -48,7 +48,7 @@ static const size_t page_len = 4096UL;
 static const size_t cache_line_len = 64UL;
 
 static const uint64_t magic = 0x044b33f12afe7de0UL;
-static const uint64_t version = 1;
+static const uint64_t version = 2;
 
 
 // -----------------------------------------------------------------------------
@@ -95,7 +95,6 @@ struct optics_packed optics_header
     atomic_off_t lens_head;
 
     char prefix[optics_name_max_len];
-    char source[optics_name_max_len];
 
     struct alloc alloc;
 };
@@ -233,25 +232,6 @@ bool optics_set_prefix(struct optics *optics, const char *prefix)
 
     strlcpy(optics->header->prefix, prefix, optics_name_max_len);
     return true;
-}
-
-
-const char *optics_get_source(struct optics *optics)
-{
-    return optics->header->source[0] == '\0' ? NULL : optics->header->source;
-}
-
-bool optics_set_source(struct optics *optics, const char *source)
-{
-    if (strnlen(source, optics_name_max_len) == optics_name_max_len) {
-        optics_fail("source '%s' length is greater than max length '%d'",
-                source, optics_name_max_len);
-        return false;
-    }
-
-    strlcpy(optics->header->source, source, optics_name_max_len);
-    return true;
-
 }
 
 
