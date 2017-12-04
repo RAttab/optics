@@ -115,7 +115,7 @@ lens_histo_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_hi
     value->below = atomic_exchange_explicit(&counters->below, 0, memory_order_relaxed);
     value->above = atomic_exchange_explicit(&counters->above, 0, memory_order_relaxed);
     for (size_t i = 0; i < histo->buckets_len - 1; ++i) {
-        value->counts[i] =
+        value->counts[i] +=
             atomic_exchange_explicit(&counters->counts[i], 0, memory_order_relaxed);
     }
 
