@@ -24,6 +24,14 @@ enum {
 
     // Maximum number of allowed buckets in a histogram lens.
     optics_histo_buckets_max = 8,
+
+    // The size here is a trade-off between memory usage and the growth rate of
+    // the error bounds as more elements are added to the reservoir. Since we're
+    // calculating percentiles, we need at least 100 values which requires a
+    // non-trivial amount space (sizeof(double) * 100 * 2 = 1600 bytes). Now
+    // since there's no way to achieve a constant error bound with reservoir
+    // sampling, we tweaked it to stay on the low side of memory consumption.
+    optics_dist_samples = 200,
 };
 
 typedef uint64_t optics_ts_t;
@@ -114,6 +122,7 @@ struct optics_dist
     double p90;
     double p99;
     double max;
+    double samples[optics_dist_samples];
 };
 
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
