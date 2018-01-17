@@ -556,7 +556,42 @@ optics_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *val
     return lens_counter_read(lens, epoch, value);
 }
 
+// -----------------------------------------------------------------------------
+// streaming
+// -----------------------------------------------------------------------------
 
+struct optics_lens * optics_streaming_alloc(struct optics *optics, const char *name, double quantile, double estimate, double adjustment_value )
+{
+    struct lens *streaming = lens_streaming_alloc(optics, name, quantile, estimate, adjustment_value);
+    if (!streaming) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc(optics, streaming);
+    if (lens) return lens;
+
+    lens_free(optics, streaming);
+    return NULL;
+}
+
+struct optics_lens * optics_streaming_alloc_get(struct optics *optics, const char *name, double quantile, double estimate, double adjustment_value)
+{
+    struct lens *streaming = lens_streaming_alloc(optics, name, quantile, estimate, adjustment_value);
+    if (!streaming) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc_get(optics, streaming);
+    if (lens->lens != streaming) lens_free(optics, streaming);
+
+    return lens;
+}
+
+bool optics_streaming_update(struct optics_lens *lens, double value){
+    return lens_streaming_update(lens, optics_epoch(lens->optics), value);
+}
+
+enum optics_ret
+optics_streaming_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
+{
+    return lens_streaming_read(lens, epoch, value);
+}
 // -----------------------------------------------------------------------------
 // gauge
 // -----------------------------------------------------------------------------
