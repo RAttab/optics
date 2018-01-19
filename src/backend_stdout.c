@@ -17,8 +17,8 @@ static bool stdout_dump_normalized(
 {
     const struct optics_poll *poll = ctx;
 
-    printf("[%lu] %s.%s{host='%s', source='%s'} = %g\n",
-            ts, poll->prefix, key, poll->host, poll->source, value);
+    printf("[%lu] %s.%s{host='%s'} = %g\n",
+            ts, poll->prefix, key, poll->host, value);
 
     return true;
 }

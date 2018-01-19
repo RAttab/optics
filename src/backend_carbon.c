@@ -82,7 +82,6 @@ static bool carbon_dump_normalized(
     struct buffer buffer = {0};
 
     buffer_printf(&buffer, "%s.%s", ctx->poll->prefix, ctx->poll->host);
-    if (ctx->poll->source) buffer_printf(&buffer, ".%s", ctx->poll->source);
     buffer_printf(&buffer, ".%s %g %lu\n", key, value, ts);
 
     carbon_send(ctx->carbon, buffer.data, buffer.len, ts);

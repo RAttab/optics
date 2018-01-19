@@ -63,5 +63,5 @@ static bool
 lens_gauge_normalize(
         const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
 {
-    return cb(ctx, poll->ts, poll->key->data, poll->value.gauge);
+    return cb(ctx, poll->ts, poll->key, poll->value.gauge);
 }

@@ -48,5 +48,5 @@ static bool
 lens_counter_normalize(
         const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
 {
-    return cb(ctx, poll->ts, poll->key->data, lens_rescale(poll, poll->value.counter));
+    return cb(ctx, poll->ts, poll->key, lens_rescale(poll, poll->value.counter));
 }

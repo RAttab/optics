@@ -46,70 +46,7 @@ void carbon_parse(struct carbon *carbon, struct htable *table);
 // internal
 // -----------------------------------------------------------------------------
 
-optics_test_head(backend_carbon_internal_with_source_test)
-{
-    const char *port = "12345";
-    struct carbon *carbon = carbon_start(port);
-
-    struct optics *optics = optics_create(test_name);
-    optics_set_prefix(optics, "prefix");
-    optics_set_source(optics, "source");
-
-    struct optics_lens *counter = optics_counter_alloc(optics, "counter");
-    struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
-    struct optics_lens *dist = optics_dist_alloc(optics, "dist");
-    const double buckets[] = {1, 2, 3};
-    struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
-    struct optics_lens *quantile = optics_quantile_alloc(optics, "quantile", 0.9, 50, 0.05);
-
-    struct optics_poller *poller = optics_poller_alloc();
-    optics_poller_set_host(poller, "host");
-    optics_dump_carbon(poller, "127.0.0.1", port);
-
-    for (size_t it = 0; it < 10; ++it) {
-        optics_counter_inc(counter, 1);
-        optics_gauge_set(gauge, 1.0);
-        for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
-        for (size_t i = 0; i < 100; ++i) optics_histo_inc(histo, i % 5);
-
-        if (!optics_poller_poll(poller)) optics_abort();
-
-        // sketchy way to wait for carbon to stop reading our input so we can
-        // read the result without issues.
-        nsleep(1 * 1000 * 1000);
-
-        struct htable result = {0};
-        carbon_parse(carbon, &result);
-        assert_htable_equal(&result, 0,
-                make_kv("prefix.host.source.counter", 1),
-                make_kv("prefix.host.source.gauge", 1),
-                make_kv("prefix.host.source.dist.p50", 50),
-                make_kv("prefix.host.source.dist.p90", 90),
-                make_kv("prefix.host.source.dist.p99", 99),
-                make_kv("prefix.host.source.dist.max", 99),
-                make_kv("prefix.host.source.dist.count", 100),
-                make_kv("prefix.host.source.histo.bucket_1_2", 20),
-                make_kv("prefix.host.source.histo.bucket_2_3", 20),
-                make_kv("prefix.host.source.histo.below", 20),
-                make_kv("prefix.host.source.histo.above", 40),
-                make_kv("prefix.host.source.quantile", 50));
-
-        htable_reset(&result);
-    }
-
-    optics_poller_free(poller);
-    optics_lens_close(counter);
-    optics_lens_close(gauge);
-    optics_lens_close(dist);
-    optics_lens_close(histo);
-    optics_lens_close(quantile);
-    optics_close(optics);
-    carbon_stop(carbon);
-}
-optics_test_tail()
-
-
-optics_test_head(backend_carbon_internal_without_source_test)
+optics_test_head(backend_carbon_internal_test)
 {
     const char *port = "12345";
     struct carbon *carbon = carbon_start(port);
@@ -175,44 +112,7 @@ optics_test_tail()
 // external
 // -----------------------------------------------------------------------------
 
-optics_test_head(backend_carbon_external_with_source_test)
-{
-
-    // When turned on the test will take longer so you can have fun starting and
-    // stopping carbon. Leave off by default.
-    enum { test_disconnects = false };
-
-    if (!test_disconnects) assert_carbon();
-
-    struct optics *optics = optics_create(test_name);
-    optics_set_prefix(optics, "prefix");
-    optics_set_source(optics, "source");
-
-    struct optics_lens *lens = optics_dist_alloc(optics, "dist");
-
-    struct optics_poller *poller = optics_poller_alloc();
-    optics_poller_set_host(poller, "host");
-    optics_dump_carbon(poller, "127.0.0.1", "2003");
-
-    size_t iterations = test_disconnects ? 10 * 1000 : 100;
-
-    for (size_t t = 0; t < iterations; ++t) {
-        for (size_t i = 0; i < 10; ++i)
-            optics_dist_record(lens, i);
-
-        if (!optics_poller_poll(poller)) optics_abort();
-
-        if (test_disconnects) nsleep(1000000);
-    }
-
-    optics_poller_free(poller);
-    optics_lens_close(lens);
-    optics_close(optics);
-}
-optics_test_tail()
-
-
-optics_test_head(backend_carbon_external_without_source_test)
+optics_test_head(backend_carbon_external_test)
 {
 
     // When turned on the test will take longer so you can have fun starting and
@@ -255,10 +155,8 @@ optics_test_tail()
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(backend_carbon_internal_with_source_test),
-        cmocka_unit_test(backend_carbon_internal_without_source_test),
-        cmocka_unit_test(backend_carbon_external_with_source_test),
-        cmocka_unit_test(backend_carbon_external_without_source_test),
+        cmocka_unit_test(backend_carbon_internal_test),
+        cmocka_unit_test(backend_carbon_external_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

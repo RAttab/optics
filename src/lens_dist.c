@@ -109,7 +109,7 @@ static size_t lens_dist_merge(
     // We have non-sampled data so use the regular sampling method
     if (to_merge_len <= optics_dist_samples) {
         for (size_t i = 0; i < to_merge_len; ++i) {
-            size_t index = rng_gen_range(&rng_global(), 0, dst_len);
+            size_t index = rng_gen_range(rng_global(), 0, dst_len);
             if (index < optics_dist_samples)
                 dst[index] = to_merge[i];
             dst_len++;
@@ -186,27 +186,27 @@ lens_dist_normalize(
     optics_key_push(&key, poll->key);
 
     old = optics_key_push(&key, "count");
-    ret = cb(ctx, poll->ts, &key->data, lens_rescale(poll, poll->value.dist.n));
+    ret = cb(ctx, poll->ts, key.data, lens_rescale(poll, poll->value.dist.n));
     optics_key_pop(&key, old);
     if (!ret) return false;
 
     old = optics_key_push(&key, "p50");
-    ret = cb(ctx, poll->ts, &key->data, poll->value.dist.p50);
+    ret = cb(ctx, poll->ts, key.data, poll->value.dist.p50);
     optics_key_pop(&key, old);
     if (!ret) return false;
 
     old = optics_key_push(&key, "p90");
-    ret = cb(ctx, poll->ts, &key->data, poll->value.dist.p90);
+    ret = cb(ctx, poll->ts, key.data, poll->value.dist.p90);
     optics_key_pop(&key, old);
     if (!ret) return false;
 
     old = optics_key_push(&key, "p99");
-    ret = cb(ctx, poll->ts, &key->data, poll->value.dist.p99);
+    ret = cb(ctx, poll->ts, key.data, poll->value.dist.p99);
     optics_key_pop(&key, old);
     if (!ret) return false;
 
     old = optics_key_push(&key, "max");
-    ret = cb(ctx, poll->ts, &key->data, poll->value.dist.max);
+    ret = cb(ctx, poll->ts, key.data, poll->value.dist.max);
     optics_key_pop(&key, old);
     if (!ret) return false;
 

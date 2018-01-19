@@ -126,25 +126,28 @@ static bool
 lens_histo_normalize(
         const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
 {
-    bool ret = false;
     size_t old;
+    bool ret = false;
     const struct optics_histo *histo = &poll->value.histo;
 
-    old = optics_key_push(poll->key, "below");
-    ret = cb(ctx, poll->ts, poll->key->data, lens_rescale(poll, histo->below));
-    optics_key_pop(poll->key, old);
+    struct optics_key key = {0};
+    optics_key_push(&key, poll->key);
+
+    old = optics_key_push(&key, "below");
+    ret = cb(ctx, poll->ts, key.data, lens_rescale(poll, histo->below));
+    optics_key_pop(&key, old);
     if (!ret) return false;
 
-    old = optics_key_push(poll->key, "above");
-    ret = cb(ctx, poll->ts, poll->key->data, lens_rescale(poll, histo->above));
-    optics_key_pop(poll->key, old);
+    old = optics_key_push(&key, "above");
+    ret = cb(ctx, poll->ts, key.data, lens_rescale(poll, histo->above));
+    optics_key_pop(&key, old);
     if (!ret) return false;
 
     for (size_t i = 0; i < histo->buckets_len - 1; ++i) {
         old = optics_key_pushf(
-                poll->key, "bucket_%.3g_%.3g", histo->buckets[i], histo->buckets[i + 1]);
-        ret = cb(ctx, poll->ts, poll->key->data, lens_rescale(poll, histo->counts[i]));
-        optics_key_pop(poll->key, old);
+                &key, "bucket_%.3g_%.3g", histo->buckets[i], histo->buckets[i + 1]);
+        ret = cb(ctx, poll->ts, key.data, lens_rescale(poll, histo->counts[i]));
+        optics_key_pop(&key, old);
         if (!ret) return false;
     }
 

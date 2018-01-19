@@ -61,8 +61,7 @@ static struct metrics *metrics_append(struct metrics *metrics, const struct opti
     struct optics_key key = {0};
     optics_key_push(&key, poll->prefix);
     optics_key_push(&key, poll->host);
-    if (poll->source) optics_key_push(&key, poll->source);
-    optics_key_push(&key, poll->key->data);
+    optics_key_push(&key, poll->key);
 
     metrics->data[metrics->len] = (struct metric) {
         .key = strndup(key.data, optics_name_max_len),

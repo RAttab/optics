@@ -213,7 +213,8 @@ union optics_poll_value
 struct optics_poll
 {
     const char *host;
-    struct optics_key *key;
+    const char *prefix;
+    const char *key;
 
     enum optics_lens_type type;
     union optics_poll_value value;
