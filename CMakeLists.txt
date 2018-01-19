@@ -87,7 +87,6 @@ set(OPTICS_POLLER_SOURCES
     src/backend_stdout.c
     src/backend_carbon.c
     src/backend_rest.c
-    src/backend_prometheus.c
     src/utils/crest/crest.c)
 
 set(OPTICS_POLLER_DEPS
@@ -180,7 +179,6 @@ optics_cmocka_test(lens_quantile)
 optics_cmocka_test(poller)
 optics_cmocka_test(poller_lens)
 optics_cmocka_test(backend_carbon)
-optics_cmocka_test(backend_prometheus)
 optics_cmocka_test(backend_rest)
 optics_cmocka_test(crest)
 

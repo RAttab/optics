@@ -283,5 +283,4 @@ struct crest;
 
 void optics_dump_stdout(struct optics_poller *);
 void optics_dump_carbon(struct optics_poller *, const char *host, const char *port);
-void optics_dump_prometheus(struct optics_poller *poller, struct crest *crest);
 void optics_dump_rest(struct optics_poller *poller, struct crest *crest);

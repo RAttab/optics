@@ -130,7 +130,6 @@ static void print_usage(void)
             "Options:\n"
             "  --dump-stdout              Dumps metrics to stdout\n"
             "  --dump-carbon=<host:port>  Dumps metrics to the given carbon host:port\n"
-            "  --dump-prometheus          Enables prometheus HTTP interface\n"
             "  --freq=<n>                 Number of seconds between each polling attempt [10]\n"
             "  --http-port=<port>         Port for HTTP server [3002]\n"
             "  --hostname=<hostname>      Hostname to include in the key [gethostname()]\n"
@@ -155,7 +154,6 @@ int main(int argc, char **argv)
         static struct option options[] = {
             {"dump-carbon", required_argument, 0, 'c'},
             {"dump-stdout", no_argument, 0, 's'},
-            {"dump-prometheus", no_argument, 0, 'p'},
             {"freq", required_argument, 0, 'f'},
             {"http-port", required_argument, 0, 'H'},
             {"hostname", required_argument, 0, 'n'},
@@ -193,11 +191,6 @@ int main(int argc, char **argv)
         case 'c':
             backend_selected = true;
             parse_carbon(poller, optarg);
-            break;
-
-        case 'p':
-            backend_selected = true;
-            optics_dump_prometheus(poller, crest);
             break;
 
         case 'n':
