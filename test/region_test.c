@@ -161,7 +161,7 @@ enum optics_ret check_lens_cb(void *ctx, struct optics_lens *lens)
 {
     struct optics *optics = ctx;
 
-    struct optics_dist dist;
+    struct optics_dist dist = {0};
     optics_dist_read(lens, optics_epoch(optics), &dist);
     optics_dist_record(lens, 1);
 
@@ -190,7 +190,7 @@ optics_test_head(region_alloc_st_test)
 
         optics_epoch_t epoch = optics_epoch(optics);
         for (size_t i = 0; i < n; ++i) {
-            struct optics_dist value;
+            struct optics_dist value = {0};
             assert_int_equal(optics_dist_read(lens[i], epoch, &value), optics_ok);
             assert_int_equal(value.n, 1);
             assert_int_equal(value.max, i);

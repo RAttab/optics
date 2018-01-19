@@ -99,3 +99,17 @@ bool assert_htable_equal_impl(
     htable_reset(&b);
     return result;
 }
+
+
+// -----------------------------------------------------------------------------
+// utils
+// -----------------------------------------------------------------------------
+
+struct optics *optics_create_idx_at(
+        const char *base, size_t index, optics_ts_t ts)
+{
+    char name[256];
+    snprintf(name, sizeof(name), "%s_%zu", base, index);
+    return optics_create_at(name, ts);
+}
+

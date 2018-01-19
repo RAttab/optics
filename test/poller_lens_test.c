@@ -23,6 +23,7 @@ bool backend_normalized_cb(void *ctx_, uint64_t ts, const char *key_suffix, doub
     struct backend_ctx *ctx = ctx_;
 
     struct optics_key key = {0};
+    optics_key_push(&key, ctx->poll->prefix);
     optics_key_push(&key, ctx->poll->host);
     optics_key_push(&key, key_suffix);
 
@@ -110,16 +111,21 @@ optics_test_head(poller_counter_test)
 
     optics_ts_t ts = 0;
 
-    struct optics *optics = optics_create_at(test_name, ts);
-    struct optics_lens *counter = optics_counter_alloc(optics, "counter");
-    optics_set_prefix(optics, "prefix");
+    struct optics *optics[2];
+    for (size_t i = 0; i < 2; ++i) {
+        optics[i] = optics_create_idx_at(test_name, i, ts);
+        optics_set_prefix(optics[i], "prefix");
+    }
+
+    struct optics_lens *l0 = optics_counter_alloc(optics[0], "counter");
+    struct optics_lens *l1 = optics_counter_alloc(optics[1], "counter");
 
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0, make_kv("prefix.host.counter", 0.0));
 
     for (size_t i = 0; i < 3; ++i) {
         ts++;
-        optics_counter_inc(counter, 1);
+        optics_counter_inc(l0, 1);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -133,7 +139,7 @@ optics_test_head(poller_counter_test)
 
         ts++;
         for (size_t j = 0; j < 10; ++j)
-            optics_counter_inc(counter, 1);
+            optics_counter_inc(l0, 1);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -141,7 +147,7 @@ optics_test_head(poller_counter_test)
 
         ts++;
         for (size_t j = 0; j < 10; ++j)
-            optics_counter_inc(counter, -1);
+            optics_counter_inc(l0, -1);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -149,16 +155,25 @@ optics_test_head(poller_counter_test)
 
         ts += 10;
         for (size_t j = 0; j < 20; ++j)
-            optics_counter_inc(counter, 3);
+            optics_counter_inc(l0, 3);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
         assert_htable_equal(&result, 0.0, make_kv("prefix.host.counter", 6.0));
+
+        ts++;
+        optics_counter_inc(l0, 1);
+        optics_counter_inc(l1, 20);
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0.0, make_kv("prefix.host.counter", 21));
     }
 
     htable_reset(&result);
-    optics_lens_close(counter);
-    optics_close(optics);
+    optics_lens_close(l0);
+    optics_lens_close(l1);
+    for (size_t i = 0; i < 2; ++i) optics_close(optics[i]);
     optics_poller_free(poller);
 }
 optics_test_tail()
@@ -177,9 +192,14 @@ optics_test_head(poller_dist_test)
 
     optics_ts_t ts = 0;
 
-    struct optics *optics = optics_create_at(test_name, ts);
-    struct optics_lens *dist = optics_dist_alloc(optics, "dist");
-    optics_set_prefix(optics, "prefix");
+    struct optics *optics[2];
+    for (size_t i = 0; i < 2; ++i) {
+        optics[i] = optics_create_idx_at(test_name, i, ts);
+        optics_set_prefix(optics[i], "prefix");
+    }
+
+    struct optics_lens *l0 = optics_dist_alloc(optics[0], "dist");
+    struct optics_lens *l1 = optics_dist_alloc(optics[1], "dist");
 
     ts++;
 
@@ -193,7 +213,7 @@ optics_test_head(poller_dist_test)
 
     for (size_t i = 0; i < 3; ++i) {
         ts++;
-        optics_dist_record(dist, 1.0);
+        optics_dist_record(l0, 1.0);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -217,7 +237,7 @@ optics_test_head(poller_dist_test)
 
         ts++;
         for (size_t i = 0; i < 10; ++i)
-            optics_dist_record(dist, i + 1);
+            optics_dist_record(l0, i + 1);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -230,7 +250,7 @@ optics_test_head(poller_dist_test)
 
         ts += 5;
         for (size_t i = 0; i < 10; ++i)
-            optics_dist_record(dist, i + 1);
+            optics_dist_record(l0, i + 1);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -240,11 +260,27 @@ optics_test_head(poller_dist_test)
                 make_kv("prefix.host.dist.p90", 10.0),
                 make_kv("prefix.host.dist.p99", 10.0),
                 make_kv("prefix.host.dist.max", 10.0));
+
+        ts++;
+        for (size_t i = 0; i < 10; ++i) {
+            optics_dist_record(l0, i + 1);
+            optics_dist_record(l1, i + 1);
+        }
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0,
+                make_kv("prefix.host.dist.count", 20.0),
+                make_kv("prefix.host.dist.p50", 6.0),
+                make_kv("prefix.host.dist.p90", 10.0),
+                make_kv("prefix.host.dist.p99", 10.0),
+                make_kv("prefix.host.dist.max", 10.0));
     }
 
     htable_reset(&result);
-    optics_lens_close(dist);
-    optics_close(optics);
+    optics_lens_close(l0);
+    optics_lens_close(l1);
+    for (size_t i = 0; i < 2; ++i) optics_close(optics[i]);
     optics_poller_free(poller);
 }
 optics_test_tail()
@@ -263,10 +299,15 @@ optics_test_head(poller_histo_test)
 
     optics_ts_t ts = 0;
 
-    struct optics *optics = optics_create_at(test_name, ts);
+    struct optics *optics[2];
+    for (size_t i = 0; i < 2; ++i) {
+        optics[i] = optics_create_idx_at(test_name, i, ts);
+        optics_set_prefix(optics[i], "prefix");
+    }
+
     const double buckets[] = {1, 2, 3};
-    struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
-    optics_set_prefix(optics, "prefix");
+    struct optics_lens *l0 = optics_histo_alloc(optics[0], "histo", buckets, 3);
+    struct optics_lens *l1 = optics_histo_alloc(optics[1], "histo", buckets, 3);
 
     ts++;
 
@@ -279,7 +320,7 @@ optics_test_head(poller_histo_test)
 
     for (size_t i = 0; i < 3; ++i) {
         ts++;
-        optics_histo_inc(histo, 1.0);
+        optics_histo_inc(l0, 1.0);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -301,7 +342,7 @@ optics_test_head(poller_histo_test)
 
         ts++;
         for (size_t i = 0; i < 80; ++i)
-            optics_histo_inc(histo, i % 4);
+            optics_histo_inc(l0, i % 4);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -313,7 +354,7 @@ optics_test_head(poller_histo_test)
 
         ts += 5;
         for (size_t i = 0; i < 80; ++i)
-            optics_histo_inc(histo, i % 4);
+            optics_histo_inc(l0, i % 4);
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
@@ -322,11 +363,27 @@ optics_test_head(poller_histo_test)
                 make_kv("prefix.host.histo.bucket_1_2", 4.0),
                 make_kv("prefix.host.histo.bucket_2_3", 4.0),
                 make_kv("prefix.host.histo.above", 4.0));
+
+        ts++;
+        for (size_t i = 0; i < 80; ++i) {
+            optics_histo_inc(l0, i % 4);
+            optics_histo_inc(l1, i % 4);
+        }
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0,
+                make_kv("prefix.host.histo.below", 40.0),
+                make_kv("prefix.host.histo.bucket_1_2", 40.0),
+                make_kv("prefix.host.histo.bucket_2_3", 40.0),
+                make_kv("prefix.host.histo.above", 40.0));
+
     }
 
     htable_reset(&result);
-    optics_lens_close(histo);
-    optics_close(optics);
+    optics_lens_close(l0);
+    optics_lens_close(l1);
+    for (size_t i = 0; i < 2; ++i) optics_close(optics[i]);
     optics_poller_free(poller);
 }
 optics_test_tail()

@@ -5,6 +5,18 @@
 
 #include "test.h"
 
+
+// -----------------------------------------------------------------------------
+// utils
+// -----------------------------------------------------------------------------
+
+#define checked_gauge_read(lens, epoch)                                 \
+    ({                                                                  \
+        double value = 0;                                               \
+        assert_int_equal(optics_gauge_read(lens, epoch, &value), optics_ok); \
+        value;                                                          \
+    })
+
 // -----------------------------------------------------------------------------
 // open/close
 // -----------------------------------------------------------------------------
@@ -54,8 +66,7 @@ optics_test_head(lens_gauge_alloc_get_test)
 
         optics_epoch_t epoch = optics_epoch_inc(optics);
 
-        double value;
-        optics_gauge_read(l0, epoch, &value);
+        double value = checked_gauge_read(l0, epoch);
         assert_float_equal(value, 2.0, 0.0);
 
         optics_lens_close(l0);
@@ -79,18 +90,56 @@ optics_test_head(lens_gauge_record_read_test)
     double value = 0;
     optics_epoch_t epoch = optics_epoch(optics);
 
-    assert_int_equal(optics_gauge_read(lens, epoch, &value), optics_ok);
+    value = checked_gauge_read(lens, epoch);
     assert_float_equal(value, 0.0, 0.0);
 
     optics_gauge_set(lens, 1.0);
-    assert_int_equal(optics_gauge_read(lens, epoch, &value), optics_ok);
+    value = checked_gauge_read(lens, epoch);
     assert_float_equal(value, 1.0, 0.0);
 
     optics_gauge_set(lens, 2.3e-5);
-    assert_int_equal(optics_gauge_read(lens, epoch, &value), optics_ok);
+    value = checked_gauge_read(lens, epoch);
     assert_float_equal(value, 2.3e-5, 1e-7);
 
     optics_lens_close(lens);
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
+// merge
+// -----------------------------------------------------------------------------
+
+optics_test_head(lens_gauge_merge_test)
+{
+    struct optics *optics = optics_create(test_name);
+    struct optics_lens *l0 = optics_gauge_alloc(optics, "l0");
+    struct optics_lens *l1 = optics_gauge_alloc(optics, "l1");
+    optics_epoch_t epoch = optics_epoch(optics);
+
+    optics_gauge_set(l0, 1);
+    optics_gauge_set(l1, 2);
+
+    // quirks of the current implementation means that last reader wins. There's
+    // no sane other way to merge gauges.
+    
+    {
+        double value = 0;
+        assert_int_equal(optics_gauge_read(l0, epoch, &value), optics_ok);
+        assert_int_equal(optics_gauge_read(l1, epoch, &value), optics_ok);
+        assert_float_equal(value, 2.0, 0.0);
+    }
+    
+    {
+        double value = 0;
+        assert_int_equal(optics_gauge_read(l1, epoch, &value), optics_ok);
+        assert_int_equal(optics_gauge_read(l0, epoch, &value), optics_ok);
+        assert_float_equal(value, 1.0, 0.0);
+    }
+    
+    optics_lens_free(l0);
+    optics_lens_free(l1);
     optics_close(optics);
 }
 optics_test_tail()
@@ -116,7 +165,6 @@ optics_test_head(lens_gauge_type_test)
 
         optics_lens_close(lens);
     }
-
 
     {
         struct optics_lens *lens = optics_lens_get(optics, lens_name);
@@ -148,13 +196,14 @@ optics_test_head(lens_gauge_epoch_test)
 
     optics_epoch_inc(optics);
 
-    assert_int_equal(optics_gauge_read(lens, e0, &value), optics_ok);
+    value = checked_gauge_read(lens, e0);
     assert_float_equal(value, 1.0, 0.0);
 
     optics_gauge_set(lens, 2.0);
 
     // Normally this shouldn't change due to the epoch change. This is a quirk
     // of the current implementation.
+    value = checked_gauge_read(lens, e0);
     assert_int_equal(optics_gauge_read(lens, e0, &value), optics_ok);
     assert_float_equal(value, 2.0, 0.0);
 
@@ -162,7 +211,7 @@ optics_test_head(lens_gauge_epoch_test)
 
     // Normally this shouldn't change due to the epoch change. This is a quirk
     // of the current implementation.
-    assert_int_equal(optics_gauge_read(lens, e1, &value), optics_ok);
+    value = checked_gauge_read(lens, e1);
     assert_float_equal(value, 2.0, 0.0);
 
     optics_lens_close(lens);
@@ -180,6 +229,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(lens_gauge_open_close_test),
         cmocka_unit_test(lens_gauge_record_read_test),
+        cmocka_unit_test(lens_gauge_merge_test),
         cmocka_unit_test(lens_gauge_type_test),
         cmocka_unit_test(lens_gauge_epoch_test),
     };

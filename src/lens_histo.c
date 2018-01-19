@@ -108,12 +108,19 @@ lens_histo_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_hi
     struct lens_histo *histo = lens_sub_ptr(lens->lens, optics_histo);
     if (!histo) return optics_err;
 
-    value->buckets_len = histo->buckets_len;
-    memcpy(value->buckets, histo->buckets, histo->buckets_len * sizeof(histo->buckets[0]));
+    if (!value->buckets_len) {
+        value->buckets_len = histo->buckets_len;
+        memcpy(value->buckets, histo->buckets, histo->buckets_len * sizeof(histo->buckets[0]));
+    }
+    else {
+        if (histo->buckets_len != value->buckets_len) return optics_err;
+        for (size_t i = 0; i < histo->buckets_len; ++i)
+            if (histo->buckets[i] != value->buckets[i]) return optics_err;
+    }
 
     struct lens_histo_epoch *counters = &histo->epochs[epoch];
-    value->below = atomic_exchange_explicit(&counters->below, 0, memory_order_relaxed);
-    value->above = atomic_exchange_explicit(&counters->above, 0, memory_order_relaxed);
+    value->below += atomic_exchange_explicit(&counters->below, 0, memory_order_relaxed);
+    value->above += atomic_exchange_explicit(&counters->above, 0, memory_order_relaxed);
     for (size_t i = 0; i < histo->buckets_len - 1; ++i) {
         value->counts[i] +=
             atomic_exchange_explicit(&counters->counts[i], 0, memory_order_relaxed);

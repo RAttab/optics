@@ -225,7 +225,7 @@ optics_test_head(poller_freq_test)
     fprintf(stderr, "\n--- EXPECTED WARNING - START ---\n");
     htable_reset(&result);
     assert_true(optics_poller_poll_at(poller, ts));
-    assert_htable_equal(&result, 0, make_kv("r.h.s.l", 10));
+    assert_htable_equal(&result, 0, make_kv("r.h.l", 10));
     fprintf(stderr, "--- EXPECTED WARNING - END ---\n\n");
 
     ts += 10;
