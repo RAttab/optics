@@ -85,6 +85,7 @@ enum optics_lens_type
     optics_gauge,
     optics_dist,
     optics_histo,
+    optics_streaming,
 };
 
 enum optics_ret
@@ -137,6 +138,13 @@ struct optics_lens * optics_histo_alloc_get(
         struct optics *, const char *name, const double *buckets, size_t buckets_len);
 bool optics_histo_inc(struct optics_lens *, double value);
 
+struct optics_lens * optics_streaming_alloc(
+    struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
+struct optics_lens * optics_streaming_alloc_get(
+    struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
+bool optics_streaming_update(struct optics_lens *, double value);  //what about epoch?
+//why don't any of the others mention optics_something_read ?
+    	
 
 // -----------------------------------------------------------------------------
 // key
