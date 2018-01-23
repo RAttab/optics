@@ -70,8 +70,7 @@ lens_streaming_read(struct optics_lens *lens, optics_epoch_t epoch, double *valu
     if (!streaming) return optics_err;
 
     *value = streaming->estimate;
-    printf("value is %g \n", *value);
-    printf("streaming estimate is %g \n", streaming->estimate);
+   
     return optics_ok;
 }
 

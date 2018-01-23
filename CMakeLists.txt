@@ -176,6 +176,7 @@ optics_cmocka_test(lens_gauge)
 optics_cmocka_test(lens_counter)
 optics_cmocka_test(lens_dist)
 optics_cmocka_test(lens_histo)
+optics_cmocka_test(lens_streaming)
 optics_cmocka_test(poller)
 optics_cmocka_test(poller_lens)
 optics_cmocka_test(backend_carbon)
@@ -207,7 +208,7 @@ optics_cmocka_bench(lens_gauge)
 optics_cmocka_bench(lens_counter)
 optics_cmocka_bench(lens_dist)
 optics_cmocka_bench(lens_histo)
-
+optics_cmocka_bench(lens_streaming)
 
 #------------------------------------------------------------------------------#
 # UBSAN

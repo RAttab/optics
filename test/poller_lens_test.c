@@ -337,6 +337,66 @@ optics_test_head(poller_histo_test)
 }
 optics_test_tail()
 
+// -----------------------------------------------------------------------------
+// streaming
+// -----------------------------------------------------------------------------
+
+optics_test_head(poller_streaming_test)
+{
+    struct htable result = {0};
+    struct optics_poller *poller = optics_poller_alloc();
+    optics_poller_set_host(poller, "host");
+    optics_poller_backend(poller, &result, backend_cb, NULL);
+
+    optics_ts_t ts = 0;
+
+    struct optics *optics = optics_create_at(test_name, ts);
+    struct optics_lens *streaming = optics_streaming_alloc(optics, "streaming", 0.9, 50, 0.05);
+    optics_set_prefix(optics, "prefix");
+    optics_set_source(optics, "source");
+
+    optics_poller_poll_at(poller, ++ts);
+    assert_htable_equal(&result, 0, make_kv("prefix.host.source.streaming", 50));
+
+    for (size_t i = 0; i < 3; ++i) {
+        ts++;
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0, make_kv("prefix.host.source.streaming", 50));
+
+        ts++;
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0, make_kv("prefix.host.source.streaming", 50));
+
+        ts++;
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.streaming", 50));
+
+        ts++;
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.streaming", 50));
+
+        ts += 10;
+
+        htable_reset(&result);
+        optics_poller_poll_at(poller, ts);
+        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.streaming", 50));
+    }
+
+    htable_reset(&result);
+    optics_lens_close(streaming);
+    optics_close(optics);
+    optics_poller_free(poller);
+}
+optics_test_tail()
+
 
 // -----------------------------------------------------------------------------
 // setup
@@ -351,6 +411,7 @@ int main(void)
         cmocka_unit_test(poller_counter_test),
         cmocka_unit_test(poller_dist_test),
         cmocka_unit_test(poller_histo_test),
+	cmocka_unit_test(poller_streaming_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

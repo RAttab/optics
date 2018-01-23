@@ -193,11 +193,11 @@ inline double optics_timer_elapsed(optics_timer_t *t0, double scale)
 
 union optics_poll_value
 {
-        int64_t counter;
-        double gauge;
-        struct optics_dist dist;
-        struct optics_histo histo;
-	double streaming;
+     int64_t counter;
+     double gauge;
+     struct optics_dist dist;
+     struct optics_histo histo;
+     double streaming;
 };
 
 struct optics_poll

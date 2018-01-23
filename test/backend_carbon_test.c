@@ -60,6 +60,7 @@ optics_test_head(backend_carbon_internal_with_source_test)
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
     const double buckets[] = {1, 2, 3};
     struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
+    struct optics_lens *streaming = optics_streaming_alloc(optics, "streaming", 0.9, 50, 0.05);
 
     struct optics_poller *poller = optics_poller_alloc();
     optics_poller_set_host(poller, "host");
@@ -90,7 +91,8 @@ optics_test_head(backend_carbon_internal_with_source_test)
                 make_kv("prefix.host.source.histo.bucket_1_2", 20),
                 make_kv("prefix.host.source.histo.bucket_2_3", 20),
                 make_kv("prefix.host.source.histo.below", 20),
-                make_kv("prefix.host.source.histo.above", 40));
+                make_kv("prefix.host.source.histo.above", 40),
+		make_kv("prefix.host.source.streaming", 50));
 
         htable_reset(&result);
     }
@@ -100,6 +102,7 @@ optics_test_head(backend_carbon_internal_with_source_test)
     optics_lens_close(gauge);
     optics_lens_close(dist);
     optics_lens_close(histo);
+    optics_lens_close(streaming);
     optics_close(optics);
     carbon_stop(carbon);
 }
@@ -119,6 +122,7 @@ optics_test_head(backend_carbon_internal_without_source_test)
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
     const double buckets[] = {1, 2, 3};
     struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
+    struct optics_lens *streaming = optics_streaming_alloc(optics, "streaming", 0.9, 50, 0);
 
     struct optics_poller *poller = optics_poller_alloc();
     optics_poller_set_host(poller, "host");
@@ -129,7 +133,6 @@ optics_test_head(backend_carbon_internal_without_source_test)
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
         for (size_t i = 0; i < 100; ++i) optics_histo_inc(histo, i % 5);
-
         if (!optics_poller_poll(poller)) optics_abort();
 
         // sketchy way to wait for carbon to stop reading our input so we can
@@ -149,7 +152,8 @@ optics_test_head(backend_carbon_internal_without_source_test)
                 make_kv("prefix.host.histo.bucket_1_2", 20),
                 make_kv("prefix.host.histo.bucket_2_3", 20),
                 make_kv("prefix.host.histo.below", 20),
-                make_kv("prefix.host.histo.above", 40));
+                make_kv("prefix.host.histo.above", 40),
+		make_kv("prefix.host.streaming", 50));
 
         htable_reset(&result);
     }
@@ -159,6 +163,7 @@ optics_test_head(backend_carbon_internal_without_source_test)
     optics_lens_close(gauge);
     optics_lens_close(dist);
     optics_lens_close(histo);
+    optics_lens_close(streaming);
     optics_close(optics);
     carbon_stop(carbon);
 }
