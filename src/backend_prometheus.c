@@ -103,6 +103,7 @@ static void merge_metric(
     case optics_histo: merge_histo(&old->value.histo, &metric->value.histo); break;
     case optics_counter: merge_counter(&old->value.counter, &metric->value.counter); break;
     case optics_gauge: break;
+    case optics_streaming: break;
     default: break;
     }
 
@@ -190,7 +191,8 @@ static void print_metric(struct buffer *buffer, const char *key, const struct me
         buffer_printf(buffer, "# TYPE %s counter\n%s%s %ld\n",
                 metric->key.data, metric->key.data, source_solo, metric->value.counter);
         break;
-
+    case optics_streaming:
+	break;
     case optics_gauge:
         buffer_printf(buffer, "# TYPE %s gauge\n%s%s %g\n",
                 metric->key.data, metric->key.data, source_solo, metric->value.gauge);

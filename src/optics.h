@@ -143,7 +143,6 @@ struct optics_lens * optics_streaming_alloc(
 struct optics_lens * optics_streaming_alloc_get(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
 bool optics_streaming_update(struct optics_lens *, double value);  //what about epoch?
-//why don't any of the others mention optics_something_read ?
     	
 
 // -----------------------------------------------------------------------------
@@ -198,6 +197,7 @@ union optics_poll_value
         double gauge;
         struct optics_dist dist;
         struct optics_histo histo;
+	double streaming;
 };
 
 struct optics_poll

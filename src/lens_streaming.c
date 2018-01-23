@@ -50,23 +50,35 @@ lens_streaming_update(struct optics_lens *lens, optics_epoch_t epoch, double val
  
     bool smaller_than_quantile = rng_gen_prob(rng_global(), streaming->quantile);
     
-    if (value < existing_estimate && !smaller_than_quantile){
-        streaming->estimate -= streaming->adjustment_value;
+    if (value < existing_estimate){
+	if (!smaller_than_quantile){
+            streaming->estimate -= streaming->adjustment_value;
+        }
     }		
     else if (smaller_than_quantile){
         streaming->estimate += streaming->adjustment_value;
     }
-
+		 
     return true;
 }
 
 static enum optics_ret
 lens_streaming_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
 {
+    (void) epoch;
     struct lens_streaming *streaming = lens_sub_ptr(lens->lens, optics_streaming);
     if (!streaming) return optics_err;
 
     *value = streaming->estimate;
+    printf("value is %g \n", *value);
+    printf("streaming estimate is %g \n", streaming->estimate);
     return optics_ok;
 }
-	
+
+static bool
+lens_streaming_normalize(
+        const struct optics_poll *poll, optics_normalize_cb_t cb, void *ctx)
+{
+    return cb(ctx, poll->ts, poll->key->data, poll->value.streaming);
+}
+

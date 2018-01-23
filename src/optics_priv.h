@@ -37,3 +37,8 @@ enum optics_ret optics_dist_read(
 
 enum optics_ret optics_histo_read(
         struct optics_lens *, optics_epoch_t epoch, struct optics_histo *value);
+
+enum optics_ret optics_streaming_read(
+    struct optics_lens *, optics_epoch_t epoch, double *value);
+
+

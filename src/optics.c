@@ -723,6 +723,7 @@ bool optics_poll_normalize(
     case optics_gauge: return lens_gauge_normalize(poll, cb, ctx);
     case optics_dist: return lens_dist_normalize(poll, cb, ctx);
     case optics_histo: return lens_histo_normalize(poll, cb, ctx);
+    case optics_streaming: return lens_streaming_normalize(poll, cb, ctx);
     default:
         optics_fail("unknown lens type '%d'", poll->type);
         return false;

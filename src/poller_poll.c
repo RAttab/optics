@@ -81,6 +81,10 @@ static enum optics_ret poller_poll_lens(void *ctx_, struct optics_lens *lens)
     case optics_histo:
         ret = optics_histo_read(lens, ctx->epoch, &poll.value.histo);
         break;
+    
+    case optics_streaming:
+	ret = optics_streaming_read(lens, ctx->epoch, &poll.value.streaming);
+	break;
 
     default:
         optics_fail("unknown poller type '%d'", optics_lens_type(lens));
