@@ -1,4 +1,4 @@
-/* lens_streaming_bench.c
+/* lens_quantile_bench.c
    Marina C., Jan 25, 20186
    FreeBSD-style copyright and disclaimer apply
 */
@@ -6,7 +6,7 @@
 #include "bench.h"
 
 
-struct streaming_bench
+struct quantile_bench
 {
     struct optics *optics;
     struct optics_lens *lens;
@@ -21,20 +21,20 @@ void run_record_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 {
     (void) id;
 
-    struct streaming_bench *bench = data;
+    struct quantile_bench *bench = data;
     optics_bench_start(b);
 
     for (size_t i = 0; i < n; ++i)
-        optics_streaming_update(bench->lens, 1);
+        optics_quantile_update(bench->lens, 1);
 }
 
 
-optics_test_head(lens_streaming_record_bench_st)
+optics_test_head(lens_quantile_record_bench_st)
 {
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_streaming_alloc(optics, "my_streaming", 50, 0.99, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.99, 0.05);
 
-    struct streaming_bench bench = { optics, lens };
+    struct quantile_bench bench = { optics, lens };
     optics_bench_st(test_name, run_record_bench, &bench);
 
     optics_close(optics);
@@ -63,23 +63,23 @@ optics_test_tail()
 void run_read_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 {
     (void) id;
-    struct streaming_bench *bench = data;
+    struct quantile_bench *bench = data;
     optics_epoch_t epoch = optics_epoch(bench->optics);
 
     optics_bench_start(b);
 
     double value;
     for (size_t i = 0; i < n; ++i)
-        optics_streaming_read(bench->lens, epoch, &value);
+        optics_quantile_read(bench->lens, epoch, &value);
 }
 
 
-optics_test_head(lens_streaming_read_bench_st)
+optics_test_head(lens_quantile_read_bench_st)
 {
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_streaming_alloc(optics, "my_streaming", 50, 0.99, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.99, 0.05);
 
-    struct streaming_bench bench = { optics, lens };
+    struct quantile_bench bench = { optics, lens };
     optics_bench_st(test_name, run_read_bench, &bench);
 
     optics_close(optics);
@@ -107,7 +107,7 @@ optics_test_tail()
 
 void run_mixed_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 {
-    struct streaming_bench *bench = data;
+    struct quantile_bench *bench = data;
     optics_epoch_t epoch = optics_epoch(bench->optics);
 
     optics_bench_start(b);
@@ -115,11 +115,11 @@ void run_mixed_bench(struct optics_bench *b, void *data, size_t id, size_t n)
     if (!id) {
         double value;
         for (size_t i = 0; i < n; ++i)
-            optics_streaming_read(bench->lens, epoch, &value);
+            optics_quantile_read(bench->lens, epoch, &value);
     }
     else {
         for (size_t i = 0; i < n; ++i)
-            optics_streaming_update(bench->lens, id);
+            optics_quantile_update(bench->lens, id);
     }
 }
 
@@ -146,8 +146,8 @@ optics_test_tail()
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(lens_streaming_record_bench_st),
-        cmocka_unit_test(lens_streaming_read_bench_st),
+        cmocka_unit_test(lens_quantile_record_bench_st),
+        cmocka_unit_test(lens_quantile_read_bench_st),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

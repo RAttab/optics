@@ -158,9 +158,9 @@ static void write_counter(struct buffer *buffer, const struct metric *metric)
         break;
     }
 
-    case optics_streaming:
+    case optics_quantile:
     {
-	buffer_printf(buffer, "\"%s\":%g", metric->key, metric->value.streaming);
+	buffer_printf(buffer, "\"%s\":%g", metric->key, metric->value.quantile);
         break;
     }
 

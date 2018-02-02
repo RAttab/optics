@@ -9,21 +9,21 @@
 // open/close
 // -----------------------------------------------------------------------------
 
-optics_test_head(lens_streaming_open_close_test)
+optics_test_head(lens_quantile_open_close_test)
 {
     struct optics *optics = optics_create(test_name);
-    const char *lens_name = "my_streaming";
+    const char *lens_name = "my_quantile";
 
     for (size_t i = 0; i < 3; ++i) {
-        struct optics_lens *lens = optics_streaming_alloc(optics, lens_name, 0.99, 0, 0.05);
+        struct optics_lens *lens = optics_quantile_alloc(optics, lens_name, 0.99, 0, 0.05);
         if (!lens) optics_abort();
 
-        assert_int_equal(optics_lens_type(lens), optics_streaming);
+        assert_int_equal(optics_lens_type(lens), optics_quantile);
         assert_string_equal(optics_lens_name(lens), lens_name);
 
-        assert_null(optics_streaming_alloc(optics, lens_name, 0.99, 0, 0.05));
+        assert_null(optics_quantile_alloc(optics, lens_name, 0.99, 0, 0.05));
         optics_lens_close(lens);
-        assert_null(optics_streaming_alloc(optics, lens_name, 0.99, 0, 0.05));
+        assert_null(optics_quantile_alloc(optics, lens_name, 0.99, 0, 0.05));
 
         assert_non_null(lens = optics_lens_get(optics, lens_name));
         optics_lens_free(lens);
@@ -37,21 +37,21 @@ optics_test_tail()
 // update
 // -----------------------------------------------------------------------------
 
-optics_test_head(lens_streaming_update_read_test)
+optics_test_head(lens_quantile_update_read_test)
 {
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_streaming_alloc(optics, "my_gauge", 0.90, 50, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_gauge", 0.90, 50, 0.05);
 
     optics_epoch_t epoch = optics_epoch(optics);
     
     for(int i = 0; i < 1000; i++){
         for (int j = 0; j < 100; j++){
-            optics_streaming_update(lens, j);
+            optics_quantile_update(lens, j);
         }
     }
     
     double value = 0;
-    assert_int_equal(optics_streaming_read(lens, epoch, &value), optics_ok);
+    assert_int_equal(optics_quantile_read(lens, epoch, &value), optics_ok);
     assert_float_equal(value, 90, 1);
 
     optics_lens_close(lens);
@@ -105,8 +105,8 @@ optics_test_tail()
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(lens_streaming_open_close_test),
-        cmocka_unit_test(lens_streaming_update_read_test),
+        cmocka_unit_test(lens_quantile_open_close_test),
+        cmocka_unit_test(lens_quantile_update_read_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

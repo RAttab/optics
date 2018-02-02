@@ -338,10 +338,10 @@ optics_test_head(poller_histo_test)
 optics_test_tail()
 
 // -----------------------------------------------------------------------------
-// streaming
+// quantile
 // -----------------------------------------------------------------------------
 
-optics_test_head(poller_streaming_test)
+optics_test_head(poller_quantile_test)
 {
     struct htable result = {0};
     struct optics_poller *poller = optics_poller_alloc();
@@ -351,47 +351,47 @@ optics_test_head(poller_streaming_test)
     optics_ts_t ts = 0;
 
     struct optics *optics = optics_create_at(test_name, ts);
-    struct optics_lens *streaming = optics_streaming_alloc(optics, "streaming", 0.9, 50, 0.05);
+    struct optics_lens *quantile = optics_quantile_alloc(optics, "quantile", 0.9, 50, 0.05);
     optics_set_prefix(optics, "prefix");
     optics_set_source(optics, "source");
 
     optics_poller_poll_at(poller, ++ts);
-    assert_htable_equal(&result, 0, make_kv("prefix.host.source.streaming", 50));
+    assert_htable_equal(&result, 0, make_kv("prefix.host.source.quantile", 50));
 
     for (size_t i = 0; i < 3; ++i) {
         ts++;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("prefix.host.source.streaming", 50));
+        assert_htable_equal(&result, 0, make_kv("prefix.host.source.quantile", 50));
 
         ts++;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("prefix.host.source.streaming", 50));
+        assert_htable_equal(&result, 0, make_kv("prefix.host.source.quantile", 50));
 
         ts++;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.streaming", 50));
+        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.quantile", 50));
 
         ts++;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.streaming", 50));
+        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.quantile", 50));
 
         ts += 10;
 
         htable_reset(&result);
         optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.streaming", 50));
+        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.quantile", 50));
     }
 
     htable_reset(&result);
-    optics_lens_close(streaming);
+    optics_lens_close(quantile);
     optics_close(optics);
     optics_poller_free(poller);
 }
@@ -411,7 +411,7 @@ int main(void)
         cmocka_unit_test(poller_counter_test),
         cmocka_unit_test(poller_dist_test),
         cmocka_unit_test(poller_histo_test),
-	cmocka_unit_test(poller_streaming_test),
+	cmocka_unit_test(poller_quantile_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
