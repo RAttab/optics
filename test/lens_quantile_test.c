@@ -34,13 +34,13 @@ optics_test_head(lens_quantile_open_close_test)
 optics_test_tail()
 
 // -----------------------------------------------------------------------------
-// update
+// update ST
 // -----------------------------------------------------------------------------
 
 optics_test_head(lens_quantile_update_read_test)
 {
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_quantile_alloc(optics, "my_gauge", 0.90, 50, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 0.90, 50, 0.05);
 
     optics_epoch_t epoch = optics_epoch(optics);
     
@@ -60,43 +60,73 @@ optics_test_head(lens_quantile_update_read_test)
 optics_test_tail()
 
 // -----------------------------------------------------------------------------
-// epoch
+// update MT
 // -----------------------------------------------------------------------------
-/*
-optics_test_head(lens_gauge_epoch_test)
+
+struct mt_test
 {
+    struct optics *optics;
+    struct optics_lens *lens;
+    size_t workers;
+
+    atomic_size_t done; //what is this keeping track of? number of finished threads?
+};
+
+double mt_test_read_lens(struct mt_test *test)
+{
+    optics_epoch_t epoch = optics_epoch(test->optics);
+
+    double value;
+    assert_int_equal(optics_quantile_read(test->lens, epoch, &value), optics_ok); // why does compiler want this to be int when its enum?
+
+    return value;
+}
+
+void run_mt_test(size_t id, void *ctx)
+{
+    struct mt_test *test = ctx;
+    enum { iterations = 1000 * 1000 };
+
+    if (id) { 
+        for (size_t i = 0; i < iterations; ++i)
+            optics_quantile_update(test->lens, i);
+
+	atomic_fetch_add_explicit(&test->done, 1, memory_order_release); 
+    }
+    else { 
+         size_t done;
+	 double result = 0;
+	 size_t writers = test->workers - 1;
+
+	 do {
+	     // should adding to result be atomic? unsure if thread can get preempted here
+             result += mt_test_read_lens(test);
+	     done = atomic_load_explicit(&test->done, memory_order_acquire);
+         } while (done < writers);
+	
+	 // here we check if the final value is what's expected which is 900000 (90th percentile of 1 000 000)
+	 double actual = result / writers;
+	 optics_assert(actual == 900000.0, "%g != 900000", result);
+    }
+}
+
+optics_test_head(lens_quantile_update_read_mt_test)
+{
+    assert_mt();
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_gauge_alloc(optics, "my_gauge");
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 0.90, 50, 0.05);
 
-    double value = 0;
-
-    optics_epoch_t e0 = optics_epoch(optics);
-    optics_gauge_set(lens, 1.0);
-
-    optics_epoch_inc(optics);
-
-    assert_int_equal(optics_gauge_read(lens, e0, &value), optics_ok);
-    assert_float_equal(value, 1.0, 0.0);
-
-    optics_gauge_set(lens, 2.0);
-
-    // Normally this shouldn't change due to the epoch change. This is a quirk
-    // of the current implementation.
-    assert_int_equal(optics_gauge_read(lens, e0, &value), optics_ok);
-    assert_float_equal(value, 2.0, 0.0);
-
-    optics_epoch_t e1 = optics_epoch_inc(optics);
-
-    // Normally this shouldn't change due to the epoch change. This is a quirk
-    // of the current implementation.
-    assert_int_equal(optics_gauge_read(lens, e1, &value), optics_ok);
-    assert_float_equal(value, 2.0, 0.0);
+    struct mt_test data = {
+        .optics = optics,
+	.lens = lens,
+	.workers = cpus(),
+    };
+    run_threads(run_mt_test, &data, data.workers);
 
     optics_lens_close(lens);
     optics_close(optics);
 }
 optics_test_tail()
-*/
 
 // -----------------------------------------------------------------------------
 // setup
@@ -107,6 +137,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(lens_quantile_open_close_test),
         cmocka_unit_test(lens_quantile_update_read_test),
+        cmocka_unit_test(lens_quantile_update_read_mt_test)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

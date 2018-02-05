@@ -32,7 +32,7 @@ void run_record_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 optics_test_head(lens_quantile_record_bench_st)
 {
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.99, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "bob_the_quantile", 50, 0.90, 0.05);
 
     struct quantile_bench bench = { optics, lens };
     optics_bench_st(test_name, run_record_bench, &bench);
@@ -41,20 +41,19 @@ optics_test_head(lens_quantile_record_bench_st)
 }
 optics_test_tail()
 
-/*
-optics_test_head(lens_gauge_record_bench_mt)
+
+optics_test_head(lens_quantile_record_bench_mt)
 {
     assert_mt();
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_gauge_alloc(optics, "my_gauge");
+    struct optics_lens *lens = optics_quantile_alloc(optics, "bob_the_quantile", 50, 0.90, 0.05);
 
-    struct gauge_bench bench = { optics, lens };
+    struct quantile_bench bench = { optics, lens };
     optics_bench_mt(test_name, run_record_bench, &bench);
 
     optics_close(optics);
 }
 optics_test_tail()
-*/
 
 // -----------------------------------------------------------------------------
 // read bench
@@ -77,7 +76,7 @@ void run_read_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 optics_test_head(lens_quantile_read_bench_st)
 {
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.99, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.90, 0.05);
 
     struct quantile_bench bench = { optics, lens };
     optics_bench_st(test_name, run_read_bench, &bench);
@@ -86,21 +85,20 @@ optics_test_head(lens_quantile_read_bench_st)
 }
 optics_test_tail()
 
-/*
-optics_test_head(lens_gauge_read_bench_mt)
+
+optics_test_head(lens_quantile_read_bench_mt)
 {
     assert_mt();
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_gauge_alloc(optics, "my_gauge");
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.90, 0.05);
 
-    struct gauge_bench bench = { optics, lens };
+    struct quantile_bench bench = { optics, lens };
     optics_bench_mt(test_name, run_read_bench, &bench);
 
     optics_close(optics);
 }
 optics_test_tail()
 
-*/
 // -----------------------------------------------------------------------------
 // mixed bench
 // -----------------------------------------------------------------------------
@@ -123,21 +121,19 @@ void run_mixed_bench(struct optics_bench *b, void *data, size_t id, size_t n)
     }
 }
 
-/*
-optics_test_head(lens_gauge_mixed_bench_mt)
+
+optics_test_head(lens_quantile_mixed_bench_mt)
 {
     assert_mt();
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_gauge_alloc(optics, "my_gauge");
+    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.90, 0.05);
 
-    struct gauge_bench bench = { optics, lens };
+    struct quantile_bench bench = { optics, lens };
     optics_bench_mt(test_name, run_mixed_bench, &bench);
 
     optics_close(optics);
 }
 optics_test_tail()
-
-*/
 
 // -----------------------------------------------------------------------------
 // setup
@@ -147,7 +143,10 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(lens_quantile_record_bench_st),
+	cmocka_unit_test(lens_quantile_record_bench_mt),
         cmocka_unit_test(lens_quantile_read_bench_st),
+	cmocka_unit_test(lens_quantile_read_bench_mt),
+	cmocka_unit_test(lens_quantile_mixed_bench_mt)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
