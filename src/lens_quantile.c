@@ -10,8 +10,9 @@
 struct optics_packed lens_quantile
 {
      double target_quantile;
-     atomic_int_fast64_t estimate;
+     double original_estimate;
      double adjustment_value;
+     atomic_int_fast64_t multiplier;
 };
 
 // -----------------------------------------------------------------------------
@@ -19,17 +20,18 @@ struct optics_packed lens_quantile
 // -----------------------------------------------------------------------------
 
 static struct lens *
-lens_quantile_alloc(struct optics *optics, const char *name, double target_quantile, double estimate, double adjustment_value)
+lens_quantile_alloc(struct optics *optics, const char *name, double target_quantile, double original_estimate, double adjustment_value)
 {
-    struct lens *lens = lens_alloc(optics, optics_quantile, sizeof(struct lens_quantile), name); //TO Do: optics_quantile
+    struct lens *lens = lens_alloc(optics, optics_quantile, sizeof(struct lens_quantile), name);
     if (!lens) goto fail_alloc;
 
     struct lens_quantile *quantile = lens_sub_ptr(lens, optics_quantile);
     if (!quantile) goto fail_sub;
 
     quantile->target_quantile = target_quantile;
-    atomic_store(&quantile->estimate, pun_dtoi(estimate));
+    quantile->original_estimate = original_estimate;
     quantile->adjustment_value = adjustment_value;
+    atomic_store(&quantile->multiplier, 0);
     
     return lens;
   fail_sub:
@@ -46,25 +48,17 @@ lens_quantile_update (struct optics_lens *lens, optics_epoch_t epoch, double val
     struct lens_quantile *quantile = lens_sub_ptr(lens->lens, optics_quantile);
     if (!quantile) return false;
     
-    double existing_estimate = pun_itod(atomic_load(&quantile->estimate));
+    double existing_estimate = quantile->original_estimate + atomic_load(&quantile->multiplier) * quantile->adjustment_value;
  
     bool smaller_than_quantile = rng_gen_prob(rng_global(), quantile->target_quantile);
-    
+
     if (value < existing_estimate){
 	if (!smaller_than_quantile){
-	    uint64_t old_value = atomic_load(&quantile->estimate);
-	    double result;
-	    do {
-	        result = pun_itod(old_value) - quantile->adjustment_value;
-	    } while (!atomic_compare_exchange_strong(&quantile->estimate, &old_value, pun_dtoi(result)));
+	    atomic_fetch_sub_explicit(&quantile->multiplier, 1, memory_order_release);
 	}
     }		
     else if (smaller_than_quantile){
-        uint64_t old_value = atomic_load(&quantile->estimate);
-	double result;
-	do {
-	    result = pun_itod(old_value) + quantile->adjustment_value;
-	} while (!atomic_compare_exchange_strong(&quantile->estimate, &old_value, pun_dtoi(result)));
+            atomic_fetch_add_explicit(&quantile->multiplier, 1, memory_order_release);
     }
 		 
     return true;
@@ -77,7 +71,7 @@ lens_quantile_read(struct optics_lens *lens, optics_epoch_t epoch, double *value
     struct lens_quantile *quantile = lens_sub_ptr(lens->lens, optics_quantile);
     if (!quantile) return optics_err;
     
-    *value = pun_itod(atomic_load(&quantile->estimate));
+    *value = quantile->original_estimate + atomic_load(&quantile->multiplier) * quantile->adjustment_value;
    
     return optics_ok;
 }
