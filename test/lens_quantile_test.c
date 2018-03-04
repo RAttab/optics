@@ -85,7 +85,7 @@ double mt_test_read_lens(struct mt_test *test)
 void run_mt_test(size_t id, void *ctx)
 {
     struct mt_test *test = ctx;
-    enum { iterations = 1000 * 1000 };
+    enum { iterations = 10 * 10 };
 
     if (id) { 
         for (size_t i = 0; i < iterations; ++i){
@@ -96,31 +96,20 @@ void run_mt_test(size_t id, void *ctx)
 	atomic_fetch_add_explicit(&test->done, 1, memory_order_release); 
     }
     else { 
-         size_t done;
-	 double result = 0;
-	 double difference;
-	 double previous_difference = 90;
-	 size_t writers = test->workers - 1;
+        size_t done;
+        double result = 0;
+        size_t writers = test->workers - 1;
 
-	 do {
-             result = mt_test_read_lens(test);
-	     // the next few lines feel really hackish. I'm trying to assert that
-	     // it is converging closer to the desired result over time
-	     // however it will eventually converge and then fluctuate
-	     // is there a better way to do this? is the convergence check here necessary?
-	     difference = 90.0 - result;
-	     assert_true(difference < previous_difference);
-	     previous_difference = difference;
-	     done = atomic_load_explicit(&test->done, memory_order_acquire);
-         } while (done < writers);
+        do {
+            done = atomic_load_explicit(&test->done, memory_order_acquire);
+        } while (done < writers);
 	
-	 // should I forget the above loop and just read the result here once all the writers are done?
-	result = mt_test_read_lens(test);
+        result = mt_test_read_lens(test);
 
 	//makes compiler angry:
 	// optics_assert(assert_float_equal(result, 90, 1), "%g too far from 90", result);
 	// is there a better way? I'd like to keep the error msg somehow
-	 assert_float_equal(result, 90, 1);
+        assert_float_equal(result, 90, 1);
     }
 }
 
@@ -132,8 +121,8 @@ optics_test_head(lens_quantile_update_read_mt_test)
 
     struct mt_test data = {
         .optics = optics,
-	.lens = lens,
-	.workers = cpus(),
+        .lens = lens,
+        .workers = cpus(),
     };
     run_threads(run_mt_test, &data, data.workers);
 

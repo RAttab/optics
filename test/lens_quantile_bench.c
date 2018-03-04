@@ -143,10 +143,10 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(lens_quantile_record_bench_st),
-	cmocka_unit_test(lens_quantile_record_bench_mt),
+        cmocka_unit_test(lens_quantile_record_bench_mt),
         cmocka_unit_test(lens_quantile_read_bench_st),
-	cmocka_unit_test(lens_quantile_read_bench_mt),
-	cmocka_unit_test(lens_quantile_mixed_bench_mt)
+        cmocka_unit_test(lens_quantile_read_bench_mt),
+        cmocka_unit_test(lens_quantile_mixed_bench_mt)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

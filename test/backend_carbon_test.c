@@ -92,7 +92,7 @@ optics_test_head(backend_carbon_internal_with_source_test)
                 make_kv("prefix.host.source.histo.bucket_2_3", 20),
                 make_kv("prefix.host.source.histo.below", 20),
                 make_kv("prefix.host.source.histo.above", 40),
-		make_kv("prefix.host.source.quantile", 50));
+                make_kv("prefix.host.source.quantile", 50));
 
         htable_reset(&result);
     }
