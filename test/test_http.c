@@ -6,6 +6,7 @@
 
 #include "utils/socket.h"
 #include "utils/buffer.h"
+#include "utils/time.h"
 
 #include <unistd.h>
 #include <netdb.h>
@@ -89,12 +90,19 @@ void http_req(struct http_client *client, const char *method, const char *path, 
 
 bool http_assert_resp(struct http_client *client, unsigned exp_code, const char *exp_body)
 {
+    // MHD can split the data into multiple packets and our parser is too dumb
+    // to handle it properly so instead we just pause to make sure we receive
+    // everything before we process it. This pause also has to account for
+    // running the test under valgrind so it's pretty large considering.
+    nsleep(10 * 1000 * 1000);
+
     char buffer[4096];
     ssize_t n = recv(client->fd, buffer, sizeof(buffer), 0);
     if (n < 0) {
         optics_fail_errno("recv");
         optics_abort();
     }
+
     buffer[n] = '\0';
 
     char *i = buffer;
@@ -107,7 +115,7 @@ bool http_assert_resp(struct http_client *client, unsigned exp_code, const char 
 
     // consume all the headers.
     while ((p = strstr(i, "\r\n"))) i = p + 2;
-    
+
     bool result = true;
     if (code != exp_code) {
         printf("FAIL(code): %d != %d\n%s\n", code, exp_code, buffer);
@@ -121,6 +129,3 @@ bool http_assert_resp(struct http_client *client, unsigned exp_code, const char 
 
     return result;
 }
-
-
-
