@@ -46,17 +46,17 @@ int main(void)
 
         optics_lens_close(lens);
     }
- 
+
     // the streaming quantile lens is good for estimating the desired quantile value.
     {
         struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 0.90, 50, 0.05);
 
-	for(int i = 0; i < 1000; i++){
+        for(int i = 0; i < 1000; i++){
             for (int j = 0; j < 100; j++){
                 optics_quantile_update(lens, j);
             }
         }
-	
+
 	// shouldn't there be a check here to read it / show how to read it
 	// and what it could be used for?
 	optics_lens_close(lens);

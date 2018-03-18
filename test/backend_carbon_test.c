@@ -133,6 +133,10 @@ optics_test_head(backend_carbon_internal_without_source_test)
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
         for (size_t i = 0; i < 100; ++i) optics_histo_inc(histo, i % 5);
+        for (int i = 0; i < 100; ++i){
+            optics_quantile_update(quantile, i); 
+        }
+
         if (!optics_poller_poll(poller)) optics_abort();
 
         // sketchy way to wait for carbon to stop reading our input so we can
@@ -153,7 +157,7 @@ optics_test_head(backend_carbon_internal_without_source_test)
                 make_kv("prefix.host.histo.bucket_2_3", 20),
                 make_kv("prefix.host.histo.below", 20),
                 make_kv("prefix.host.histo.above", 40),
-		make_kv("prefix.host.quantile", 50));
+                make_kv("prefix.host.quantile", 90));
 
         htable_reset(&result);
     }

@@ -142,7 +142,7 @@ struct optics_lens * optics_quantile_alloc(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
 struct optics_lens * optics_quantile_alloc_get(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
-bool optics_quantile_update(struct optics_lens *, double value);  //what about epoch?
+bool optics_quantile_update(struct optics_lens *, double value);
     	
 
 // -----------------------------------------------------------------------------

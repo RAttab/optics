@@ -31,8 +31,8 @@ lens_quantile_alloc(struct optics *optics, const char *name, double target_quant
     quantile->target_quantile = target_quantile;
     quantile->original_estimate = original_estimate;
     quantile->adjustment_value = adjustment_value;
-    atomic_store(&quantile->multiplier, 0);
-    
+    atomic_init(&quantile->multiplier, 0);
+
     return lens;
   fail_sub:
     lens_free(optics, lens);
@@ -47,20 +47,22 @@ lens_quantile_update (struct optics_lens *lens, optics_epoch_t epoch, double val
 
     struct lens_quantile *quantile = lens_sub_ptr(lens->lens, optics_quantile);
     if (!quantile) return false;
-    
-    double existing_estimate = quantile->original_estimate + atomic_load(&quantile->multiplier) * quantile->adjustment_value;
- 
+
+    double existing_estimate = quantile->original_estimate + atomic_load_explicit(&quantile->multiplier, memory_order_relaxed) * quantile->adjustment_value;
+
     bool smaller_than_quantile = rng_gen_prob(rng_global(), quantile->target_quantile);
 
-    if (value < existing_estimate){
-	if (!smaller_than_quantile){
-	    atomic_fetch_sub_explicit(&quantile->multiplier, 1, memory_order_release);
-	}
-    }		
-    else if (smaller_than_quantile){
-            atomic_fetch_add_explicit(&quantile->multiplier, 1, memory_order_release);
+    if (value < existing_estimate) {
+        if (!smaller_than_quantile) {
+            atomic_fetch_sub_explicit(&quantile->multiplier, 1, memory_order_relaxed);
+        }
     }
-		 
+    else {
+        if (smaller_than_quantile){
+             atomic_fetch_add_explicit(&quantile->multiplier, 1, memory_order_relaxed);
+        }
+    }
+
     return true;
 }
 
@@ -70,9 +72,9 @@ lens_quantile_read(struct optics_lens *lens, optics_epoch_t epoch, double *value
     (void) epoch;
     struct lens_quantile *quantile = lens_sub_ptr(lens->lens, optics_quantile);
     if (!quantile) return optics_err;
-    
-    *value = quantile->original_estimate + atomic_load(&quantile->multiplier) * quantile->adjustment_value;
-   
+
+    *value = quantile->original_estimate + atomic_load_explicit(&quantile->multiplier, memory_order_relaxed) * quantile->adjustment_value;
+
     return optics_ok;
 }
 

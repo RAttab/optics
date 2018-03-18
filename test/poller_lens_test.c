@@ -411,7 +411,7 @@ int main(void)
         cmocka_unit_test(poller_counter_test),
         cmocka_unit_test(poller_dist_test),
         cmocka_unit_test(poller_histo_test),
-	cmocka_unit_test(poller_quantile_test),
+        cmocka_unit_test(poller_quantile_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -36,7 +36,7 @@ optics_test_head(backend_rest_basics_test)
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
         for (double i = 0; i < 100; ++i) optics_quantile_update(quantile, i);
 
-       	if (!optics_poller_poll(poller)) optics_abort();
+        if (!optics_poller_poll(poller)) optics_abort();
 
         assert_http_code(port, "GET", path, 200);
     }

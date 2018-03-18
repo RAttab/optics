@@ -76,7 +76,7 @@ void run_read_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 optics_test_head(lens_quantile_read_bench_st)
 {
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.90, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "bob_the_quantile", 50, 0.90, 0.05);
 
     struct quantile_bench bench = { optics, lens };
     optics_bench_st(test_name, run_read_bench, &bench);
@@ -90,7 +90,7 @@ optics_test_head(lens_quantile_read_bench_mt)
 {
     assert_mt();
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.90, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "bob_the_quantile", 50, 0.90, 0.05);
 
     struct quantile_bench bench = { optics, lens };
     optics_bench_mt(test_name, run_read_bench, &bench);
@@ -126,7 +126,7 @@ optics_test_head(lens_quantile_mixed_bench_mt)
 {
     assert_mt();
     struct optics *optics = optics_create(test_name);
-    struct optics_lens *lens = optics_quantile_alloc(optics, "my_quantile", 50, 0.90, 0.05);
+    struct optics_lens *lens = optics_quantile_alloc(optics, "bob_the_quantile", 50, 0.90, 0.05);
 
     struct quantile_bench bench = { optics, lens };
     optics_bench_mt(test_name, run_mixed_bench, &bench);
