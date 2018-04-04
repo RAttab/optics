@@ -34,7 +34,7 @@ optics_test_head(backend_rest_basics_test)
         optics_counter_inc(counter, 1);
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
-        for (double i = 0; i < 100; ++i) optics_quantile_update(quantile, i);
+        for (size_t i = 0; i < 100; ++i) optics_quantile_update(quantile, i);
 
         if (!optics_poller_poll(poller)) optics_abort();
 

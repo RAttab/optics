@@ -85,13 +85,13 @@ double mt_test_read_lens(struct mt_test *test)
 void run_mt_test(size_t id, void *ctx)
 {
     struct mt_test *test = ctx;
-    enum { iterations = 10 * 10 };
+    enum { iterations = 100 };
 
     if (id) {
         for (size_t i = 0; i < iterations; ++i){
             for (size_t j = 0; j < 100; ++j)
                 optics_quantile_update(test->lens, j);
-	}
+    }
 
     atomic_fetch_add_explicit(&test->done, 1, memory_order_release);
     }

@@ -357,38 +357,18 @@ optics_test_head(poller_quantile_test)
 
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0, make_kv("prefix.host.source.quantile", 50));
-
-    for (size_t i = 0; i < 3; ++i) {
-        ts++;
-
-        htable_reset(&result);
-        optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("prefix.host.source.quantile", 50));
-
-        ts++;
-
-        htable_reset(&result);
-        optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0, make_kv("prefix.host.source.quantile", 50));
-
-        ts++;
-
-        htable_reset(&result);
-        optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.quantile", 50));
-
-        ts++;
-
-        htable_reset(&result);
-        optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.quantile", 50));
-
-        ts += 10;
-
-        htable_reset(&result);
-        optics_poller_poll_at(poller, ts);
-        assert_htable_equal(&result, 0.0, make_kv("prefix.host.source.quantile", 50));
+ 
+     for(size_t i = 0; i < 1000; i++){
+        for (size_t j = 0; j < 100; j++){
+            optics_quantile_update(quantile, j);
+        }
     }
+
+    ts += 10;
+
+    htable_reset(&result);
+    optics_poller_poll_at(poller, ts);
+    assert_htable_equal(&result, 1, make_kv("prefix.host.source.quantile", 90));
 
     htable_reset(&result);
     optics_lens_close(quantile);

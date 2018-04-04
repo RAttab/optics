@@ -25,7 +25,7 @@ void run_record_bench(struct optics_bench *b, void *data, size_t id, size_t n)
     optics_bench_start(b);
 
     for (size_t i = 0; i < n; ++i)
-        optics_quantile_update(bench->lens, 1);
+        optics_quantile_update(bench->lens, 50);
 }
 
 

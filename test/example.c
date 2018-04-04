@@ -57,9 +57,7 @@ int main(void)
             }
         }
 
-	// shouldn't there be a check here to read it / show how to read it
-	// and what it could be used for?
-	optics_lens_close(lens);
+    optics_lens_close(lens);
     }
 
 
