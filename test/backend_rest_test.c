@@ -22,6 +22,7 @@ optics_test_head(backend_rest_basics_test)
     struct optics_lens *counter = optics_counter_alloc(optics, "counter");
     struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
+    struct optics_lens *quantile = optics_quantile_alloc(optics, "quantile", .9, 50, 0.05);
 
     struct crest *crest = crest_new();
     struct optics_poller *poller = optics_poller_alloc();
@@ -33,6 +34,8 @@ optics_test_head(backend_rest_basics_test)
         optics_counter_inc(counter, 1);
         optics_gauge_set(gauge, 1.0);
         for (size_t i = 0; i < 100; ++i) optics_dist_record(dist, i);
+        for (size_t i = 0; i < 100; ++i) optics_quantile_update(quantile, i);
+
         if (!optics_poller_poll(poller)) optics_abort();
 
         assert_http_code(port, "GET", path, 200);
@@ -43,6 +46,7 @@ optics_test_head(backend_rest_basics_test)
     optics_lens_close(dist);
     optics_lens_close(gauge);
     optics_lens_close(counter);
+    optics_lens_close(quantile);
     optics_close(optics);
 }
 optics_test_tail()

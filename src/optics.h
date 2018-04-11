@@ -85,6 +85,7 @@ enum optics_lens_type
     optics_gauge,
     optics_dist,
     optics_histo,
+    optics_quantile,
 };
 
 enum optics_ret
@@ -137,6 +138,12 @@ struct optics_lens * optics_histo_alloc_get(
         struct optics *, const char *name, const double *buckets, size_t buckets_len);
 bool optics_histo_inc(struct optics_lens *, double value);
 
+struct optics_lens * optics_quantile_alloc(
+    struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
+struct optics_lens * optics_quantile_alloc_get(
+    struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
+bool optics_quantile_update(struct optics_lens *, double value);
+    	
 
 // -----------------------------------------------------------------------------
 // key
@@ -186,10 +193,11 @@ inline double optics_timer_elapsed(optics_timer_t *t0, double scale)
 
 union optics_poll_value
 {
-        int64_t counter;
-        double gauge;
-        struct optics_dist dist;
-        struct optics_histo histo;
+     int64_t counter;
+     double gauge;
+     struct optics_dist dist;
+     struct optics_histo histo;
+     double quantile;
 };
 
 struct optics_poll

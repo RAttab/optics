@@ -158,6 +158,12 @@ static void write_counter(struct buffer *buffer, const struct metric *metric)
         break;
     }
 
+    case optics_quantile:
+    {
+	buffer_printf(buffer, "\"%s\":%g", metric->key, metric->value.quantile);
+        break;
+    }
+
     default:
         optics_fail("unknown lens type '%d'", metric->type);
         break;

@@ -177,3 +177,4 @@ static void lens_kill(struct optics *optics, struct lens *lens)
 #include "lens_gauge.c"
 #include "lens_dist.c"
 #include "lens_histo.c"
+#include "lens_quantile.c"

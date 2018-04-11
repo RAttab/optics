@@ -556,7 +556,42 @@ optics_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *val
     return lens_counter_read(lens, epoch, value);
 }
 
+// -----------------------------------------------------------------------------
+// quantile
+// -----------------------------------------------------------------------------
 
+struct optics_lens * optics_quantile_alloc(struct optics *optics, const char *name, double target_quantile, double estimate, double adjustment_value )
+{
+    struct lens *quantile = lens_quantile_alloc(optics, name, target_quantile, estimate, adjustment_value);
+    if (!quantile) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc(optics, quantile);
+    if (lens) return lens;
+
+    lens_free(optics, quantile);
+    return NULL;
+}
+
+struct optics_lens * optics_quantile_alloc_get(struct optics *optics, const char *name, double target_quantile, double estimate, double adjustment_value)
+{
+    struct lens *quantile = lens_quantile_alloc(optics, name, target_quantile, estimate, adjustment_value);
+    if (!quantile) return NULL;
+
+    struct optics_lens *lens = optics_lens_alloc_get(optics, quantile);
+    if (lens->lens != quantile) lens_free(optics, quantile);
+
+    return lens;
+}
+
+bool optics_quantile_update(struct optics_lens *lens, double value){
+    return lens_quantile_update(lens, optics_epoch(lens->optics), value);
+}
+
+enum optics_ret
+optics_quantile_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
+{
+    return lens_quantile_read(lens, epoch, value);
+}
 // -----------------------------------------------------------------------------
 // gauge
 // -----------------------------------------------------------------------------
@@ -688,6 +723,7 @@ bool optics_poll_normalize(
     case optics_gauge: return lens_gauge_normalize(poll, cb, ctx);
     case optics_dist: return lens_dist_normalize(poll, cb, ctx);
     case optics_histo: return lens_histo_normalize(poll, cb, ctx);
+    case optics_quantile: return lens_quantile_normalize(poll, cb, ctx);
     default:
         optics_fail("unknown lens type '%d'", poll->type);
         return false;

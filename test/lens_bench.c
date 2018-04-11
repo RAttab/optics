@@ -73,7 +73,7 @@ void run_get_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 
 optics_test_head(lens_get_bench)
 {
-    for (size_t count = 1; count <= 1000; count *= 10) {
+    for (size_t count = 1; count <= 100; count *= 2) {
         struct optics *optics = optics_create(test_name);
 
         struct bench_lens *list = make_lenses(optics, count, 0);
