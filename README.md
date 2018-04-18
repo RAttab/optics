@@ -9,6 +9,7 @@ external agent.
 Dependencies:
 - cmake
 - libbsd
+- libdaemon
 - libmicrohttpd
 
 Optional Dependencies:
@@ -45,6 +46,20 @@ Options:
 - `ctest -V . -L valgrind`: Run only the valgrind tests
 - `ctest -V . -L bench`: run only the benchmarks
 
+
+If you'd rather use Docker, you can build your own image with this command:
+```
+docker image build --tag optics:0.1.13 .
+```
+
+To run the Docker image, you need to enable IPC between the container and the host,
+and map a local port to optics's HTTP port.
+```
+docker container run                            \
+    --name my_optics --ipc=host -p 3002:3002 -d \
+    optics:0.1.13                               \
+    --dump-stdout --dump-carbon=localhost:2003 --http-port=3002
+```
 
 ### Usage
 
