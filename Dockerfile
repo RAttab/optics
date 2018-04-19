@@ -18,7 +18,7 @@ COPY . /src/optics/
 WORKDIR /src/optics/build
 RUN     cmake .. -G Ninja                         \
      && ninja -C .                                \
-     && ninja -C . test                           \
+     && ctest . -L test                           \
      && ninja -C . install
 
 FROM debian:9.4-slim
