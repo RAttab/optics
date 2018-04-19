@@ -5,7 +5,6 @@ RUN apt-get update                                \
         build-essential                           \
         ca-certificates                           \
         cmake                                     \
-        git                                       \
         libbsd-dev                                \
         libdaemon-dev                             \
         libcmocka-dev                             \
