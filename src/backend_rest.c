@@ -159,7 +159,12 @@ static void write_counter(struct buffer *buffer, const struct metric *metric)
 
     case optics_quantile:
     {
-	buffer_printf(buffer, "\"%s\":%g", metric->key, metric->value.quantile);
+        const struct optics_quantile *quantile = &metric->value.quantile;
+
+        buffer_printf(buffer, "\"%s\":{\"value\":%g,\"count\":%zu}",
+                metric->key,
+                quantile->sample,
+                quantile->count);
         break;
     }
 

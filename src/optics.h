@@ -144,12 +144,20 @@ struct optics_lens * optics_histo_alloc_get(
         struct optics *, const char *name, const double *buckets, size_t buckets_len);
 bool optics_histo_inc(struct optics_lens *, double value);
 
+struct optics_quantile
+{
+    double quantile;
+    double sample;
+    size_t sample_count;
+    size_t count;
+};
+
 struct optics_lens * optics_quantile_alloc(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
 struct optics_lens * optics_quantile_alloc_get(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
 bool optics_quantile_update(struct optics_lens *, double value);
-    	
+
 
 // -----------------------------------------------------------------------------
 // key
@@ -207,7 +215,7 @@ union optics_poll_value
      double gauge;
      struct optics_dist dist;
      struct optics_histo histo;
-     double quantile;
+     struct optics_quantile quantile;
 };
 
 struct optics_poll

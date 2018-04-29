@@ -552,9 +552,15 @@ struct optics_lens * optics_quantile_alloc(struct optics *optics, const char *na
     return NULL;
 }
 
-struct optics_lens * optics_quantile_alloc_get(struct optics *optics, const char *name, double target_quantile, double estimate, double adjustment_value)
+struct optics_lens * optics_quantile_alloc_get(
+        struct optics *optics,
+        const char *name,
+        double target_quantile,
+        double estimate,
+        double adjustment_value)
 {
-    struct lens *quantile = lens_quantile_alloc(optics, name, target_quantile, estimate, adjustment_value);
+    struct lens *quantile =
+        lens_quantile_alloc(optics, name, target_quantile, estimate, adjustment_value);
     if (!quantile) return NULL;
 
     struct optics_lens *lens = optics_lens_alloc_get(optics, quantile);
@@ -567,11 +573,13 @@ bool optics_quantile_update(struct optics_lens *lens, double value){
     return lens_quantile_update(lens, optics_epoch(lens->optics), value);
 }
 
-enum optics_ret
-optics_quantile_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
+enum optics_ret optics_quantile_read(
+        struct optics_lens *lens, optics_epoch_t epoch, struct optics_quantile *value)
 {
     return lens_quantile_read(lens, epoch, value);
 }
+
+
 // -----------------------------------------------------------------------------
 // gauge
 // -----------------------------------------------------------------------------
