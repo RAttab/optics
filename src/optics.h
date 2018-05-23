@@ -181,9 +181,13 @@ inline double optics_timer_elapsed(optics_timer_t *t0, double scale)
     struct timespec t1;
     if (clock_gettime(CLOCK_MONOTONIC, &t1)) abort();
 
+    const uint64_t nano_sec = 1UL * 1000 * 1000 * 1000;
+
     uint64_t secs = t1.tv_sec - t0->tv_sec;
-    uint64_t nanos = t1.tv_nsec - t0->tv_nsec;
-    return (secs * 1UL * 1000 * 1000 * 1000 + nanos) * scale;
+    uint64_t nanos = secs ?
+        (nano_sec - t1.tv_nsec) + t0->tv_nsec :
+        (uint64_t) (t1.tv_nsec - t0->tv_nsec);
+    return (secs * nano_sec + nanos) * scale;
 }
 
 
