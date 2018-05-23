@@ -158,6 +158,8 @@ void optics_log_impl(const char *title, const char *fmt, ...)
 
         fprintf(stderr, "[%8lu] <%lu> %s: %s\n", tick_inc(), tid(), title, buf);
     }
+
+    va_end(args);
 }
 
 void optics_log_dump()
