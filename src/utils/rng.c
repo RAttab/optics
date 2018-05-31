@@ -22,10 +22,7 @@
 struct rng *rng_global()
 {
     static __thread struct rng rng = {0};
-    if (!rng.initialized) {
-        rng.initialized = true;
-        rng_seed(&rng);
-    }
+    if (!rng.x) rng_seed(&rng);
     return &rng;
 }
 

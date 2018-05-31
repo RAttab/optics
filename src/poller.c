@@ -9,6 +9,8 @@
 #include "utils/shm.h"
 #include "utils/log.h"
 #include "utils/socket.h"
+#include "utils/htable.h"
+#include "utils/type_pun.h"
 
 #include <stdio.h>
 #include <stdlib.h>

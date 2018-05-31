@@ -67,6 +67,12 @@ bool assert_htable_equal_impl(
         assert_true(assert_htable_equal_impl(set, exp, len, eps));  \
     } while (false)
 
+// -----------------------------------------------------------------------------
+// utils
+// -----------------------------------------------------------------------------
+
+struct optics *optics_create_idx_at(
+        const char *base, size_t index, optics_ts_t ts);
 
 
 // -----------------------------------------------------------------------------

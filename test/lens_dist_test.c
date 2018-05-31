@@ -12,6 +12,14 @@
 // utils
 // -----------------------------------------------------------------------------
 
+#define checked_dist_read(lens, epoch)                                  \
+    ({                                                                  \
+        struct optics_dist value = {0};                                 \
+        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok); \
+        value;                                                          \
+    })
+
+
 #define assert_dist_equal(dist, _n, _p50, _p90, _p99, _max, epsilon)    \
     do {                                                                \
         assert_int_equal(value.n, (_n));                                \
@@ -77,8 +85,7 @@ optics_test_head(lens_dist_alloc_get_test)
 
         optics_epoch_t epoch = optics_epoch_inc(optics);
 
-        struct optics_dist value;
-        optics_dist_read(l0, epoch, &value);
+        struct optics_dist value = checked_dist_read(l0, epoch);
         assert_dist_equal(value, 100, 50, 90, 99, 100, 0);
 
         optics_lens_close(l0);
@@ -102,11 +109,11 @@ optics_test_head(lens_dist_record_read_exact_test)
     struct optics_dist value;
     optics_epoch_t epoch = optics_epoch(optics);
 
-    assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+    value = checked_dist_read(lens, epoch);
     assert_dist_equal(value, 0, 0, 0, 0, 0, 0);
 
     assert_true(optics_dist_record(lens, 1));
-    assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+    value = checked_dist_read(lens, epoch);
     assert_dist_equal(value, 1, 1, 1, 1, 1, 0);
 
     for (size_t max = 10; max <= 200; max *= 10) {
@@ -114,11 +121,11 @@ optics_test_head(lens_dist_record_read_exact_test)
             assert_true(optics_dist_record(lens, i));
         }
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(
                 value, max, p(50, max), p(90, max), p(99, max), max - 1, 1);
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(value, 0, 0, 0, 0, 0, 0);
     }
 
@@ -127,11 +134,11 @@ optics_test_head(lens_dist_record_read_exact_test)
             assert_true(optics_dist_record(lens, max - (i + 1)));
         }
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(
                 value, max, p(50, max), p(90, max), p(99, max), max - 1, 1);
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(value, 0, 0, 0, 0, 0, 0);
     }
 
@@ -166,11 +173,11 @@ optics_test_head(lens_dist_record_read_random_test)
             assert_true(optics_dist_record(lens, i));
         }
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(
                 value, max, p(50, max), p(90, max), p(99, max), max - 1, epsilon);
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(value, 0, 0, 0, 0, 0, 0);
     }
 
@@ -179,11 +186,11 @@ optics_test_head(lens_dist_record_read_random_test)
             assert_true(optics_dist_record(lens, max - i - 1));
         }
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(
                 value, max, p(50, max), p(90, max), p(99, max), max - 1, epsilon);
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(value, 0, 0, 0, 0, 0, 0);
     }
 
@@ -198,15 +205,76 @@ optics_test_head(lens_dist_record_read_random_test)
             assert_true(optics_dist_record(lens, val));
         }
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(
                 value, max, p(50, max), p(90, max), p(99, max), max_val, epsilon);
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
         assert_dist_equal(value, 0, 0, 0, 0, 0, 0);
     }
 
     optics_lens_close(lens);
+    optics_close(optics);
+}
+optics_test_tail()
+
+
+// -----------------------------------------------------------------------------
+// merge
+// -----------------------------------------------------------------------------
+
+static void test_merge(struct optics *optics, size_t n0, size_t n1, double epsilon)
+{
+    enum { range = 100 };
+
+    struct rng rng = {0};
+    rng_seed_with(&rng, 0);
+
+    optics_epoch_t epoch = optics_epoch(optics);
+    struct { size_t n; struct optics_lens *lens; } item[2] = {
+        { n0, optics_dist_alloc(optics, "l0") },
+        { n1, optics_dist_alloc(optics, "l1") },
+    };
+
+    double max = 0;
+    for (size_t i = 0; i < 2; ++i) {
+        for (size_t j = 0; j < item[i].n; ++j) {
+            double value = rng_gen_range(&rng, 0, range);
+            if (value > max) max = value;
+            optics_dist_record(item[i].lens, value);
+        }
+    }
+
+    struct optics_dist value = {0};
+    for (size_t i = 0; i < 2; ++i) {
+        assert_int_equal(optics_dist_read(item[i].lens, epoch, &value), optics_ok);
+    }
+
+    assert_dist_equal(
+            value, n0 + n1, p(50, range), p(90, range), p(99, range), max, epsilon);
+
+    for (size_t i = 0; i < 2; ++i)
+        optics_lens_free(item[i].lens);
+}
+
+optics_test_head(lens_dist_merge_test)
+{
+    struct optics *optics = optics_create(test_name);
+
+    size_t n = optics_dist_samples;
+    size_t half = n / 2;
+    size_t quarter = 3 * (n / 4);
+    size_t full = n;
+    size_t over = n * 2;
+
+    test_merge(optics, half, half, 1.0);
+    test_merge(optics, full, half, 5.0);
+
+    test_merge(optics, quarter, half, 5.0);
+    test_merge(optics, half, quarter, 5.0);
+
+    test_merge(optics, over, over, 5.0);
+
     optics_close(optics);
 }
 optics_test_tail()
@@ -227,6 +295,7 @@ optics_test_head(lens_dist_type_test)
     {
         struct optics_lens *lens = optics_counter_alloc(optics, lens_name);
 
+        value = (struct optics_dist) {0};
         assert_false(optics_dist_record(lens, 1));
         assert_int_equal(optics_dist_read(lens, epoch, &value), optics_err);
 
@@ -237,6 +306,7 @@ optics_test_head(lens_dist_type_test)
     {
         struct optics_lens *lens = optics_lens_get(optics, lens_name);
 
+        value = (struct optics_dist) {0};
         assert_false(optics_dist_record(lens, 1));
         assert_int_equal(optics_dist_read(lens, epoch, &value), optics_err);
 
@@ -262,7 +332,7 @@ optics_test_head(lens_dist_epoch_st_test)
         optics_epoch_t epoch = optics_epoch_inc(optics);
         optics_dist_record(lens, i);
 
-        assert_int_equal(optics_dist_read(lens, epoch, &value), optics_ok);
+        value = checked_dist_read(lens, epoch);
 
         size_t n = i - 1 ? 1 : 0;
         size_t v = i - 1;
@@ -292,7 +362,7 @@ size_t epoch_test_read_lens(struct epoch_test *test)
 {
     optics_epoch_t epoch = optics_epoch_inc(test->optics);
 
-    struct optics_dist value;
+    struct optics_dist value = {0};
     enum optics_ret ret;
 
     nsleep(1 * 1000 * 1000);
@@ -368,6 +438,7 @@ int main(void)
         cmocka_unit_test(lens_dist_open_close_test),
         cmocka_unit_test(lens_dist_record_read_exact_test),
         cmocka_unit_test(lens_dist_record_read_random_test),
+        cmocka_unit_test(lens_dist_merge_test),
         cmocka_unit_test(lens_dist_type_test),
         cmocka_unit_test(lens_dist_epoch_st_test),
         cmocka_unit_test(lens_dist_epoch_mt_test),

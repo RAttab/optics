@@ -48,7 +48,7 @@ static const size_t page_len = 4096UL;
 static const size_t cache_line_len = 64UL;
 
 static const uint64_t magic = 0x044b33f12afe7de0UL;
-static const uint64_t version = 1;
+static const uint64_t version = 2;
 
 
 // -----------------------------------------------------------------------------
@@ -95,7 +95,6 @@ struct optics_packed optics_header
     atomic_off_t lens_head;
 
     char prefix[optics_name_max_len];
-    char source[optics_name_max_len];
 
     struct alloc alloc;
 };
@@ -233,25 +232,6 @@ bool optics_set_prefix(struct optics *optics, const char *prefix)
 
     strlcpy(optics->header->prefix, prefix, optics_name_max_len);
     return true;
-}
-
-
-const char *optics_get_source(struct optics *optics)
-{
-    return optics->header->source[0] == '\0' ? NULL : optics->header->source;
-}
-
-bool optics_set_source(struct optics *optics, const char *source)
-{
-    if (strnlen(source, optics_name_max_len) == optics_name_max_len) {
-        optics_fail("source '%s' length is greater than max length '%d'",
-                source, optics_name_max_len);
-        return false;
-    }
-
-    strlcpy(optics->header->source, source, optics_name_max_len);
-    return true;
-
 }
 
 
@@ -572,9 +552,15 @@ struct optics_lens * optics_quantile_alloc(struct optics *optics, const char *na
     return NULL;
 }
 
-struct optics_lens * optics_quantile_alloc_get(struct optics *optics, const char *name, double target_quantile, double estimate, double adjustment_value)
+struct optics_lens * optics_quantile_alloc_get(
+        struct optics *optics,
+        const char *name,
+        double target_quantile,
+        double estimate,
+        double adjustment_value)
 {
-    struct lens *quantile = lens_quantile_alloc(optics, name, target_quantile, estimate, adjustment_value);
+    struct lens *quantile =
+        lens_quantile_alloc(optics, name, target_quantile, estimate, adjustment_value);
     if (!quantile) return NULL;
 
     struct optics_lens *lens = optics_lens_alloc_get(optics, quantile);
@@ -587,11 +573,13 @@ bool optics_quantile_update(struct optics_lens *lens, double value){
     return lens_quantile_update(lens, optics_epoch(lens->optics), value);
 }
 
-enum optics_ret
-optics_quantile_read(struct optics_lens *lens, optics_epoch_t epoch, double *value)
+enum optics_ret optics_quantile_read(
+        struct optics_lens *lens, optics_epoch_t epoch, struct optics_quantile *value)
 {
     return lens_quantile_read(lens, epoch, value);
 }
+
+
 // -----------------------------------------------------------------------------
 // gauge
 // -----------------------------------------------------------------------------

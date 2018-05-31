@@ -61,8 +61,7 @@ static struct metrics *metrics_append(struct metrics *metrics, const struct opti
     struct optics_key key = {0};
     optics_key_push(&key, poll->prefix);
     optics_key_push(&key, poll->host);
-    if (poll->source) optics_key_push(&key, poll->source);
-    optics_key_push(&key, poll->key->data);
+    optics_key_push(&key, poll->key);
 
     metrics->data[metrics->len] = (struct metric) {
         .key = strndup(key.data, optics_name_max_len),
@@ -160,7 +159,12 @@ static void write_counter(struct buffer *buffer, const struct metric *metric)
 
     case optics_quantile:
     {
-	buffer_printf(buffer, "\"%s\":%g", metric->key, metric->value.quantile);
+        const struct optics_quantile *quantile = &metric->value.quantile;
+
+        buffer_printf(buffer, "\"%s\":{\"value\":%g,\"count\":%zu}",
+                metric->key,
+                quantile->sample,
+                quantile->count);
         break;
     }
 

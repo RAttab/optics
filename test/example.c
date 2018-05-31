@@ -16,11 +16,6 @@ int main(void)
     // Acts as the prefix for all keys.
     optics_set_prefix(optics, "my_prefix");
 
-    // If multiple instances of a service are running on the same host, then a
-    // source identifier must be provided to avoid collisions on the recorded
-    // metrics. Otherwise, this option is optional.
-    optics_set_source(optics, "my_source");
-
     // Gauges will emit the same value until it is changed or removed.
     {
         struct optics_lens *lens = optics_gauge_alloc(optics, "my_gauge");

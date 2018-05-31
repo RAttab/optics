@@ -39,6 +39,6 @@ enum optics_ret optics_histo_read(
         struct optics_lens *, optics_epoch_t epoch, struct optics_histo *value);
 
 enum optics_ret optics_quantile_read(
-    struct optics_lens *, optics_epoch_t epoch, double *value);
+        struct optics_lens *, optics_epoch_t epoch, struct optics_quantile *value);
 
 

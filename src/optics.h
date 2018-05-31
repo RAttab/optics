@@ -24,6 +24,14 @@ enum {
 
     // Maximum number of allowed buckets in a histogram lens.
     optics_histo_buckets_max = 8,
+
+    // The size here is a trade-off between memory usage and the growth rate of
+    // the error bounds as more elements are added to the reservoir. Since we're
+    // calculating percentiles, we need at least 100 values which requires a
+    // non-trivial amount space (sizeof(double) * 100 * 2 = 1600 bytes). Now
+    // since there's no way to achieve a constant error bound with reservoir
+    // sampling, we tweaked it to stay on the low side of memory consumption.
+    optics_dist_samples = 200,
 };
 
 typedef uint64_t optics_ts_t;
@@ -68,9 +76,6 @@ bool optics_unlink_all();
 
 const char *optics_get_prefix(struct optics *);
 bool optics_set_prefix(struct optics *, const char *prefix);
-
-const char *optics_get_source(struct optics *);
-bool optics_set_source(struct optics *, const char *source);
 
 
 // -----------------------------------------------------------------------------
@@ -117,6 +122,7 @@ struct optics_dist
     double p90;
     double p99;
     double max;
+    double samples[optics_dist_samples];
 };
 
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
@@ -138,12 +144,20 @@ struct optics_lens * optics_histo_alloc_get(
         struct optics *, const char *name, const double *buckets, size_t buckets_len);
 bool optics_histo_inc(struct optics_lens *, double value);
 
+struct optics_quantile
+{
+    double quantile;
+    double sample;
+    size_t sample_count;
+    size_t count;
+};
+
 struct optics_lens * optics_quantile_alloc(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
 struct optics_lens * optics_quantile_alloc_get(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
 bool optics_quantile_update(struct optics_lens *, double value);
-    	
+
 
 // -----------------------------------------------------------------------------
 // key
@@ -201,15 +215,14 @@ union optics_poll_value
      double gauge;
      struct optics_dist dist;
      struct optics_histo histo;
-     double quantile;
+     struct optics_quantile quantile;
 };
 
 struct optics_poll
 {
     const char *host;
     const char *prefix;
-    const char *source;
-    struct optics_key *key;
+    const char *key;
 
     enum optics_lens_type type;
     union optics_poll_value value;
@@ -279,5 +292,4 @@ struct crest;
 
 void optics_dump_stdout(struct optics_poller *);
 void optics_dump_carbon(struct optics_poller *, const char *host, const char *port);
-void optics_dump_prometheus(struct optics_poller *poller, struct crest *crest);
 void optics_dump_rest(struct optics_poller *poller, struct crest *crest);

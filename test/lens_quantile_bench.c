@@ -67,9 +67,10 @@ void run_read_bench(struct optics_bench *b, void *data, size_t id, size_t n)
 
     optics_bench_start(b);
 
-    double value;
-    for (size_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i) {
+        struct optics_quantile value = {0};
         optics_quantile_read(bench->lens, epoch, &value);
+    }
 }
 
 
@@ -111,9 +112,10 @@ void run_mixed_bench(struct optics_bench *b, void *data, size_t id, size_t n)
     optics_bench_start(b);
 
     if (!id) {
-        double value;
-        for (size_t i = 0; i < n; ++i)
+        for (size_t i = 0; i < n; ++i) {
+            struct optics_quantile value = {0};
             optics_quantile_read(bench->lens, epoch, &value);
+        }
     }
     else {
         for (size_t i = 0; i < n; ++i)
