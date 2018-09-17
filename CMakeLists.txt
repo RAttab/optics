@@ -13,10 +13,11 @@ enable_testing()
 #------------------------------------------------------------------------------#
 # BASICS
 #------------------------------------------------------------------------------#
+include(GNUInstallDirs)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_LIBDIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_LIBDIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_BINDIR})
 
 add_definitions("-pipe -g -O3 -Werror -march=native")
 add_definitions("-Wall")
@@ -113,9 +114,9 @@ target_link_libraries(opticsd ${OPTICS_POLLER_DEPS} ${DAEMON_LIBRARIES})
 #------------------------------------------------------------------------------#
 
 install(TARGETS optics optics_static opticsd
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib)
+    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
 
 install(FILES src/optics.h DESTINATION include)
 
