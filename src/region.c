@@ -92,7 +92,7 @@ static bool region_create(struct region *region, const char *name, size_t len)
     if (!region_shm_name(name, region->name, sizeof(region->name)))
         goto fail_name;
 
-    region->fd = shm_open(region->name, O_RDWR | O_CREAT | O_EXCL, 0600);
+    region->fd = shm_open(region->name, O_RDWR | O_CREAT | O_EXCL, 0666);
     if (region->fd == -1) {
         optics_fail_errno("unable to create region '%s'", name);
         goto fail_open;
