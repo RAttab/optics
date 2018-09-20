@@ -19,6 +19,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_LIBD
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_LIBDIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_BINDIR})
 
+set(BIN_DIR ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_BINDIR})
+
 add_definitions("-pipe -g -O3 -Werror -march=native")
 add_definitions("-Wall")
 add_definitions("-Wextra")
@@ -156,11 +158,11 @@ function(optics_cmocka_test name)
         target_link_libraries(${name}_test ${OPTICS_TESTS_DEPS})
         set_property(TARGET ${name}_test APPEND PROPERTY COMPILE_OPTIONS ${CMOCKA_CFLAGS})
 
-        add_test(${name}_test bin/${name}_test)
+        add_test(${name}_test ${BIN_DIR}/${name}_test)
         set_tests_properties(${name}_test PROPERTIES LABELS "test")
 
         if(VALGRIND_EXEC)
-            add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS} bin/${name}_test)
+            add_test(${name}_valgrind ${VALGRIND_EXEC} ${VALGRIND_ARGS} ${BIN_DIR}/${name}_test)
             set_tests_properties(${name}_valgrind PROPERTIES LABELS "valgrind")
         endif()
     endif()
@@ -194,7 +196,7 @@ function(optics_cmocka_bench name)
         target_link_libraries(${name}_bench optics_tests ${OPTICS_TESTS_DEPS})
         set_property(TARGET ${name}_bench APPEND PROPERTY COMPILE_OPTIONS ${CMOCKA_CFLAGS})
 
-        add_test(${name}_bench bin/${name}_bench)
+        add_test(${name}_bench ${BIN_DIR}/${name}_bench)
         set_tests_properties(${name}_bench PROPERTIES LABELS "bench")
     endif()
 endfunction()
