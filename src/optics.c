@@ -55,11 +55,7 @@ static const uint64_t version = 2;
 // impl
 // -----------------------------------------------------------------------------
 
-struct optics_lens
-{
-    struct optics *optics;
-    struct lens *lens;
-};
+
 
 static void * optics_ptr(struct optics *optics, optics_off_t off, size_t len);
 static optics_off_t optics_alloc(struct optics *optics, size_t len);

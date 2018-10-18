@@ -12,8 +12,6 @@
 // epoch
 // -----------------------------------------------------------------------------
 
-typedef size_t optics_epoch_t;
-optics_epoch_t optics_epoch(struct optics *optics);
 optics_epoch_t optics_epoch_inc(struct optics *optics);
 optics_epoch_t optics_epoch_inc_at(
         struct optics *optics, optics_ts_t now, optics_ts_t *last_inc);

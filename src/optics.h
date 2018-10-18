@@ -78,11 +78,25 @@ const char *optics_get_prefix(struct optics *);
 bool optics_set_prefix(struct optics *, const char *prefix);
 
 
+
+
+// -----------------------------------------------------------------------------
+// epoch
+// -----------------------------------------------------------------------------
+
+typedef size_t optics_epoch_t;
+optics_epoch_t optics_epoch(struct optics *optics);
+
+
 // -----------------------------------------------------------------------------
 // lens
 // -----------------------------------------------------------------------------
 
-struct optics_lens;
+struct optics_lens
+{
+    struct optics *optics;
+    struct lens *lens;
+};
 
 enum optics_lens_type
 {
@@ -110,10 +124,16 @@ bool optics_lens_free(struct optics_lens *);
 struct optics_lens * optics_counter_alloc(struct optics *, const char *name);
 struct optics_lens * optics_counter_alloc_get(struct optics *, const char *name);
 bool optics_counter_inc(struct optics_lens *, int64_t value);
+enum optics_ret
+  optics_counter_read(struct optics_lens *lens, optics_epoch_t epoch, int64_t *value);
+
 
 struct optics_lens * optics_gauge_alloc(struct optics *, const char *name);
 struct optics_lens * optics_gauge_alloc_get(struct optics *, const char *name);
 bool optics_gauge_set(struct optics_lens *, double value);
+enum optics_ret
+    optics_gauge_read(struct optics_lens *lens, optics_epoch_t epoch, double *value);
+
 
 struct optics_dist
 {
@@ -128,6 +148,8 @@ struct optics_dist
 struct optics_lens * optics_dist_alloc(struct optics *, const char *name);
 struct optics_lens * optics_dist_alloc_get(struct optics *, const char *name);
 bool optics_dist_record(struct optics_lens *, double value);
+enum optics_ret
+    optics_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_dist *value);
 
 struct optics_histo
 {
@@ -143,6 +165,8 @@ struct optics_lens * optics_histo_alloc(
 struct optics_lens * optics_histo_alloc_get(
         struct optics *, const char *name, const double *buckets, size_t buckets_len);
 bool optics_histo_inc(struct optics_lens *, double value);
+enum optics_ret
+    optics_histo_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_histo *value);
 
 struct optics_quantile
 {
@@ -157,6 +181,9 @@ struct optics_lens * optics_quantile_alloc(
 struct optics_lens * optics_quantile_alloc_get(
     struct optics *, const char *name, double quantile, double estimate, double adjustment_value);
 bool optics_quantile_update(struct optics_lens *, double value);
+enum optics_ret optics_quantile_read(
+        struct optics_lens *lens, optics_epoch_t epoch, struct optics_quantile *value);
+
 
 
 // -----------------------------------------------------------------------------
@@ -293,3 +320,4 @@ struct crest;
 void optics_dump_stdout(struct optics_poller *);
 void optics_dump_carbon(struct optics_poller *, const char *host, const char *port);
 void optics_dump_rest(struct optics_poller *poller, struct crest *crest);
+
