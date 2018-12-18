@@ -73,6 +73,7 @@ link_directories(${CMOCKA_LIBRARY_DIRS} ${DAEMON_LIBRARY_DIRS} ${LIBBSD_LIBRARY_
 
 set(OPTICS_SOURCES
     src/optics.c
+    src/poller.c
     src/utils/utils.c)
 
 set(OPTICS_DEPS
