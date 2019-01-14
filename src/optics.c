@@ -663,7 +663,7 @@ optics_dist_read(struct optics_lens *lens, optics_epoch_t epoch, struct optics_d
 // -----------------------------------------------------------------------------
 
 struct optics_lens * optics_histo_alloc(
-        struct optics *optics, const char *name, const double *buckets, size_t buckets_len)
+        struct optics *optics, const char *name, const uint64_t *buckets, size_t buckets_len)
 {
     struct lens *histo = lens_histo_alloc(optics, name, buckets, buckets_len);
     if (!histo) return NULL;
@@ -676,7 +676,7 @@ struct optics_lens * optics_histo_alloc(
 }
 
 struct optics_lens * optics_histo_alloc_get(
-        struct optics *optics, const char *name, const double *buckets, size_t buckets_len)
+        struct optics *optics, const char *name, const uint64_t *buckets, size_t buckets_len)
 {
     struct lens *histo = lens_histo_alloc(optics, name, buckets, buckets_len);
     if (!histo) return NULL;

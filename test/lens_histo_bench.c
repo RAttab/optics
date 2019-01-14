@@ -23,7 +23,7 @@ struct histo_bench
 
 static struct optics_lens *make_basic_lens(struct optics * optics)
 {
-    double buckets[] = {1, 2, 3, 4, 5, 6, 7, 8};
+    uint64_t buckets[] = {1, 2, 3, 4, 5, 6, 7, 8};
     return optics_histo_alloc(optics, "my_histo", buckets, calc_len(buckets));
 }
 

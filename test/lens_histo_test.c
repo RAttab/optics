@@ -27,7 +27,7 @@
         assert_int_equal(histo.buckets_len, calc_len(_buckets));        \
                                                                         \
         for (size_t i = 0; i < calc_len(_buckets); ++i)                 \
-            assert_float_equal(_buckets[i], histo.buckets[i], 0.001);   \
+            assert_int_equal(_buckets[i], histo.buckets[i]);   \
                                                                         \
         size_t counts[] = {__VA_ARGS__};                                \
         for (size_t i = 0; i < calc_len(_buckets) - 1; ++i)             \
@@ -46,7 +46,7 @@ optics_test_head(lens_histo_open_close_test)
 {
     struct optics *optics = optics_create(test_name);
     const char *lens_name = "my_histo";
-    const double buckets[] = {1, 2};
+    const uint64_t buckets[] = {1, 2};
 
     for (size_t i = 0; i < 3; ++i) {
         struct optics_lens *lens =
@@ -77,7 +77,7 @@ optics_test_head(lens_histo_alloc_get_test)
 {
     struct optics *optics = optics_create(test_name);
     const char *lens_name = "my_histo";
-    const double buckets[] = {1, 10, 100};
+    const uint64_t buckets[] = {1, 10, 100};
 
     for (size_t i = 0; i < 3; ++i) {
         struct optics_lens *l0 = optics_histo_alloc_get(
@@ -115,33 +115,33 @@ optics_test_head(lens_histo_validate_test)
     const char *lens_name = "my_histo";
 
     {
-        const double buckets[] = {};
+        const uint64_t buckets[] = {};
         assert_null(optics_histo_alloc(optics, lens_name, buckets, calc_len(buckets)));
     }
 
     {
-        const double buckets[] = {1};
+        const uint64_t buckets[] = {1};
         assert_null(optics_histo_alloc(optics, lens_name, buckets, calc_len(buckets)));
     }
 
     {
-        const double buckets[] = {2, 1};
+        const uint64_t buckets[] = {2, 1};
         assert_null(optics_histo_alloc(optics, lens_name, buckets, calc_len(buckets)));
     }
 
     {
-        const double buckets[] = {1, 1};
+        const uint64_t buckets[] = {1, 1};
         assert_null(optics_histo_alloc(optics, lens_name, buckets, calc_len(buckets)));
     }
 
     {
-        double buckets[optics_histo_buckets_max + 1];
+        uint64_t buckets[optics_histo_buckets_max + 1];
         for (size_t i = 0; i < calc_len(buckets); ++i) buckets[i] = i;
         assert_non_null(optics_histo_alloc(optics, lens_name, buckets, calc_len(buckets)));
     }
 
     {
-        double buckets[optics_histo_buckets_max + 2];
+        uint64_t buckets[optics_histo_buckets_max + 2];
         for (size_t i = 0; i < calc_len(buckets); ++i) buckets[i] = i;
         assert_null(optics_histo_alloc(optics, lens_name, buckets, calc_len(buckets)));
     }
@@ -159,7 +159,7 @@ optics_test_head(lens_histo_record_read_test)
 {
     struct optics *optics = optics_create(test_name);
 
-    const double buckets[] = {10, 20, 30, 40, 50};
+    const uint64_t buckets[] = {10, 20, 30, 40, 50};
     struct optics_lens *lens = optics_histo_alloc(optics, "my_histo", buckets, calc_len(buckets));
 
     struct optics_histo value;
@@ -204,7 +204,7 @@ optics_test_tail()
 
 optics_test_head(lens_histo_merge_test)
 {
-    const double buckets[] = {10, 20, 30, 40, 50};
+    const uint64_t buckets[] = {10, 20, 30, 40, 50};
     struct optics *optics = optics_create(test_name);
     struct optics_lens *l0 = optics_histo_alloc(optics, "l0", buckets, calc_len(buckets));
     struct optics_lens *l1 = optics_histo_alloc(optics, "l1", buckets, calc_len(buckets));
@@ -244,7 +244,7 @@ optics_test_head(lens_histo_merge_test)
     }
 
     {
-        const double buckets[] = {10, 20};
+        const uint64_t buckets[] = {10, 20};
         struct optics_lens *l2 = optics_histo_alloc(optics, "l2", buckets, calc_len(buckets));
 
         struct optics_histo value = {0};
@@ -254,9 +254,9 @@ optics_test_head(lens_histo_merge_test)
 
         optics_lens_free(l2);
     }
-    
+
     {
-        const double buckets[] = {10, 25, 30, 40, 50};
+        const uint64_t buckets[] = {10, 25, 30, 40, 50};
         struct optics_lens *l2 = optics_histo_alloc(optics, "l2", buckets, calc_len(buckets));
 
         struct optics_histo value = {0};
@@ -319,7 +319,7 @@ optics_test_head(lens_histo_epoch_st_test)
 {
     struct optics *optics = optics_create(test_name);
 
-    const double buckets[] = {1, 2, 3, 4, 5};
+    const uint64_t buckets[] = {1, 2, 3, 4, 5};
     struct optics_lens *lens =
         optics_histo_alloc(optics, "my_histo", buckets, calc_len(buckets));
 
@@ -411,7 +411,7 @@ optics_test_head(lens_histo_epoch_mt_test)
     assert_mt();
     struct optics *optics = optics_create(test_name);
 
-    const double buckets[] = { 0, 10, 20, 30, 40, 50 };
+    const uint64_t buckets[] = { 0, 10, 20, 30, 40, 50 };
     struct optics_lens *lens =
         optics_histo_alloc(optics, "my_histo", buckets, calc_len(buckets));
 
