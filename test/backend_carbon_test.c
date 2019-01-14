@@ -57,7 +57,7 @@ optics_test_head(backend_carbon_internal_test)
     struct optics_lens *counter = optics_counter_alloc(optics, "counter");
     struct optics_lens *gauge = optics_gauge_alloc(optics, "gauge");
     struct optics_lens *dist = optics_dist_alloc(optics, "dist");
-    const double buckets[] = {1, 2, 3};
+    const uint64_t buckets[] = {1, 2, 3};
     struct optics_lens *histo = optics_histo_alloc(optics, "histo", buckets, 3);
     struct optics_lens *quantile = optics_quantile_alloc(optics, "quantile", 0.9, 50, 0);
 

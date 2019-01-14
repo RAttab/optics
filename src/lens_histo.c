@@ -18,7 +18,7 @@ struct optics_packed lens_histo
 {
     struct lens_histo_epoch epochs[2];
 
-    double buckets[optics_histo_buckets_max + 1];
+    uint64_t buckets[optics_histo_buckets_max + 1];
     size_t buckets_len;
 };
 
@@ -30,7 +30,7 @@ struct optics_packed lens_histo
 static struct lens *
 lens_histo_alloc(
         struct optics *optics, const char *name,
-        const double *buckets, size_t buckets_len)
+        const uint64_t *buckets, size_t buckets_len)
 {
     if (buckets_len < 2) {
         optics_fail("invalid histo bucket length '%lu' < '2'", buckets_len);
@@ -45,7 +45,7 @@ lens_histo_alloc(
 
     for (size_t i = 0; i < buckets_len - 1; ++i) {
         if (buckets[i] >= buckets[i + 1]) {
-            optics_fail("invalid histo buckets '%lu:%lf' >= '%lu:%lf'",
+            optics_fail("invalid histo buckets '%lu:%lu' >= '%lu:%lu'",
                     i, buckets[i], i + 1, buckets[i + 1]);
             goto fail_buckets;
         }
@@ -152,7 +152,7 @@ lens_histo_normalize(
 
     for (size_t i = 0; i < histo->buckets_len - 1; ++i) {
         old = optics_key_pushf(
-                &key, "bucket_%.3g_%.3g", histo->buckets[i], histo->buckets[i + 1]);
+                &key, "bucket_%lu_%lu", histo->buckets[i], histo->buckets[i + 1]);
         ret = cb(ctx, poll->ts, key.data, lens_rescale(poll, histo->counts[i]));
         optics_key_pop(&key, old);
         if (!ret) return false;

@@ -305,7 +305,7 @@ optics_test_head(poller_histo_test)
         optics_set_prefix(optics[i], "prefix");
     }
 
-    const double buckets[] = {1, 2, 3};
+    const uint64_t buckets[] = {1, 2, 3};
     struct optics_lens *l0 = optics_histo_alloc(optics[0], "histo", buckets, 3);
     struct optics_lens *l1 = optics_histo_alloc(optics[1], "histo", buckets, 3);
 
@@ -407,8 +407,8 @@ optics_test_head(poller_quantile_test)
 
     optics_poller_poll_at(poller, ++ts);
     assert_htable_equal(&result, 0, make_kv("prefix.host.quantile", 50));
- 
-     for(size_t i = 0; i < 1000; i++){
+
+    for(size_t i = 0; i < 1000; i++){
         for (size_t j = 0; j < 100; j++){
             optics_quantile_update(quantile, j);
         }

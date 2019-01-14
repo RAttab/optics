@@ -132,16 +132,16 @@ bool optics_dist_record(struct optics_lens *, double value);
 struct optics_histo
 {
     size_t buckets_len;
-    double buckets[optics_histo_buckets_max + 1];
+    uint64_t buckets[optics_histo_buckets_max + 1];
 
     size_t below, above;
     size_t counts[optics_histo_buckets_max];
 };
 
 struct optics_lens * optics_histo_alloc(
-        struct optics *, const char *name, const double *buckets, size_t buckets_len);
+        struct optics *, const char *name, const uint64_t *buckets, size_t buckets_len);
 struct optics_lens * optics_histo_alloc_get(
-        struct optics *, const char *name, const double *buckets, size_t buckets_len);
+        struct optics *, const char *name, const uint64_t *buckets, size_t buckets_len);
 bool optics_histo_inc(struct optics_lens *, double value);
 
 struct optics_quantile

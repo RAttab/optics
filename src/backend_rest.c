@@ -149,7 +149,7 @@ static void write_counter(struct buffer *buffer, const struct metric *metric)
                 metric->key, histo->above, histo->below);
 
         for (size_t i = 0; i < histo->buckets_len - 1; ++i) {
-            buffer_printf(buffer, ",\"bucket_%3g-%3g\":%zu",
+            buffer_printf(buffer, ",\"bucket_%lu-%lu\":%zu",
                     histo->buckets[i], histo->buckets[i+1], histo->counts[i]);
         }
 
