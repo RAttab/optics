@@ -1,0 +1,8 @@
+prefix=@pc_prefix@
+includedir=${prefix}/include
+
+Name: Optics poller static library
+Description: Metrics gathering library
+Version: @pc_version@
+Cflags: -I${includedir}
+Libs: -loptics_poller_static -lrt -lbsd
