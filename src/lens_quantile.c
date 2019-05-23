@@ -48,7 +48,7 @@ lens_quantile_alloc(
 
 static double calculate_quantile(struct lens_quantile *quantile)
 {
-    size_t adjustment =
+    double adjustment =
         atomic_load_explicit(&quantile->multiplier, memory_order_relaxed) *
         quantile->adjustment_value;
 
