@@ -41,6 +41,11 @@ add_definitions("-Wno-missing-field-initializers")
 # don't see the issue with that so...
 add_definitions("-Wno-format-nonliteral")
 
+# GCC 9 consider -Waddress-of-packed-member an error by default, so we ignore it.
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 9)
+    add_definitions("-Wno-error=address-of-packed-member")
+endif()
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -std=gnu11 -pthread -D_GNU_SOURCE")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOPTICS_VERSION=\"${VERSION}\"")
 
